@@ -1,0 +1,18 @@
+env: local
+
+app:
+  env: local
+  name: temp-go
+  version: v0.0.1
+
+postgres:
+  type: postgres
+  host: localhost
+  port: 5432
+  name: sbh
+  user: demo
+  password: demo
+  schema: public
+  maxAttempts: 5
+  attemptDelay: 5s
+  migrationPath: migrations/pg
