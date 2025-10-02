@@ -1,7 +1,11 @@
 package main
 
 import (
+	"GGChat/internal/api"
+	"GGChat/internal/api/crut"
 	"GGChat/internal/config"
+	database "GGChat/internal/db"
+	"GGChat/internal/service/db"
 	"context"
 	"fmt"
 	"github.com/Malware3447/configo"
@@ -23,6 +27,16 @@ func main() {
 		panic(err)
 	}
 	log.Info("Postgres успешно запущен")
+
+	dbPg := database.NewRepositoryPg(poolPg)
+
+	pgService := db.NewDbService(dbPg)
+
+	crutApi := crut.NewCrut(pgService)
+
+	router := api.NewApi(crutApi)
+
+	router.Init()
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)

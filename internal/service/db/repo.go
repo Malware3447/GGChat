@@ -13,7 +13,7 @@ func NewDbService(repo db.PgRepository) *DbService {
 	return &DbService{repo: repo}
 }
 
-func (ds *DbService) UsersVerification(ctx context.Context, username, password string) (int, error) {
+func (ds *DbService) UsersVerification(ctx context.Context, username, password string) (int, bool, error) {
 	return ds.repo.UsersVerification(ctx, username, password)
 }
 

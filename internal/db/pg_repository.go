@@ -17,7 +17,7 @@ func NewRepositoryPg(db *pgxpool.Pool) PgRepository {
 	return &RepositoryPg{db: db}
 }
 
-func (repo *RepositoryPg) UsersVerification(ctx context.Context, username, password string) (int, error) {
+func (repo *RepositoryPg) UsersVerification(ctx context.Context, username, password string) (int, bool, error) {
 	const q = `
 	SELECT id, password FROM users
 	WHERE user_name = $1
@@ -28,18 +28,18 @@ func (repo *RepositoryPg) UsersVerification(ctx context.Context, username, passw
 	err := repo.db.QueryRow(ctx, q, username).Scan(&id, &storedPassword)
 
 	if errors.Is(err, pgx.ErrNoRows) {
-		return -1, nil
+		return -1, false, nil
 	}
 
 	if err != nil {
-		return -1, fmt.Errorf("ошибка при поиске данных в БД: %w", err)
+		return -1, false, fmt.Errorf("ошибка при поиске данных в БД: %w", err)
 	}
 
 	if storedPassword != password {
-		return -1, nil
+		return -1, false, nil
 	}
 
-	return id, nil
+	return id, true, nil
 }
 
 func (repo *RepositoryPg) NewUser(ctx context.Context, username, password string) (bool, error) {
