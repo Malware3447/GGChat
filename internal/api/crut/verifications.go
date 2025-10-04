@@ -5,6 +5,8 @@ import (
 	"GGChat/internal/service/db"
 	"context"
 	"encoding/json"
+	"fmt"
+	"github.com/sirupsen/logrus"
 	"net/http"
 )
 
@@ -19,9 +21,12 @@ func NewCrut(repo *db.DbService) *ApiVerifications {
 }
 
 func (v *ApiVerifications) UsersVerifications(w http.ResponseWriter, r *http.Request) {
+	log := logrus.New()
+	log.Info("Пришел запрос на верификацию...")
 	body := modelV.Request{}
 	err := json.NewDecoder(r.Body).Decode(&body)
 	if err != nil {
+		log.Warn(fmt.Printf("Неправильное тело запроса: %v", err))
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
@@ -30,6 +35,7 @@ func (v *ApiVerifications) UsersVerifications(w http.ResponseWriter, r *http.Req
 
 	id, confirmation, err := v.repo.UsersVerification(ctx, body.Username, body.Password)
 	if err != nil {
+		log.Error(fmt.Printf("Неправильный запрос в базу данных: %v", err))
 		http.Error(w, "Invalid request in database", http.StatusBadRequest)
 		return
 	}
@@ -46,13 +52,18 @@ func (v *ApiVerifications) UsersVerifications(w http.ResponseWriter, r *http.Req
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
+
+		log.Info("Верификация пройдена.")
 	} else {
-		http.Error(w, "Error verifications", http.StatusBadRequest)
+		log.Warn("Ошибка верификации")
+		http.Error(w, "Error verifications.", http.StatusBadRequest)
 		return
 	}
 }
 
 func (v *ApiVerifications) UsersRegistrations(w http.ResponseWriter, r *http.Request) {
+	log := logrus.New()
+	log.Info("Пришел запрос на регистрацию...")
 	body := modelV.Request{}
 	err := json.NewDecoder(r.Body).Decode(&body)
 	if err != nil {
@@ -62,14 +73,14 @@ func (v *ApiVerifications) UsersRegistrations(w http.ResponseWriter, r *http.Req
 
 	ctx := context.Background()
 
-	confirmation, err := v.repo.NewUser(ctx, body.Username, body.Password)
+	confirmation, id, err := v.repo.NewUser(ctx, body.Username, body.Password)
 	if err != nil {
 		http.Error(w, "Invalid request in database", http.StatusBadRequest)
 		return
 	}
 
 	response := modelV.Response{
-		Id:           0,
+		Id:           id,
 		Confirmation: confirmation,
 		Massage:      "Пользователь успешно зарегистрирован",
 	}
@@ -81,6 +92,8 @@ func (v *ApiVerifications) UsersRegistrations(w http.ResponseWriter, r *http.Req
 			http.Error(w, "Internal server error", http.StatusBadRequest)
 			return
 		}
+
+		log.Info("Пользователь успешно зарегистрирован")
 	} else {
 		http.Error(w, "Invalid request database", http.StatusBadRequest)
 		return

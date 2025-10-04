@@ -17,6 +17,6 @@ func (ds *DbService) UsersVerification(ctx context.Context, username, password s
 	return ds.repo.UsersVerification(ctx, username, password)
 }
 
-func (ds *DbService) NewUser(ctx context.Context, username, password string) (bool, error) {
+func (ds *DbService) NewUser(ctx context.Context, username, password string) (bool, int, error) {
 	return ds.repo.NewUser(ctx, username, password)
 }

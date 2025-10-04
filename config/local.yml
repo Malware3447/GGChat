@@ -9,7 +9,7 @@ postgres:
   type: postgres
   host: localhost
   port: 5432
-  name: sbh
+  name: ggchat
   user: demo
   password: demo
   schema: public

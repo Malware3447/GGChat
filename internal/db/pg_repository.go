@@ -20,7 +20,7 @@ func NewRepositoryPg(db *pgxpool.Pool) PgRepository {
 func (repo *RepositoryPg) UsersVerification(ctx context.Context, username, password string) (int, bool, error) {
 	const q = `
 	SELECT id, password FROM users
-	WHERE user_name = $1
+	WHERE username = $1
 	`
 
 	var storedPassword string
@@ -42,7 +42,7 @@ func (repo *RepositoryPg) UsersVerification(ctx context.Context, username, passw
 	return id, true, nil
 }
 
-func (repo *RepositoryPg) NewUser(ctx context.Context, username, password string) (bool, error) {
+func (repo *RepositoryPg) NewUser(ctx context.Context, username, password string) (bool, int, error) {
 	const q = `
 	INSERT INTO users (username, password)
 	VALUES ($1, $2)
@@ -52,12 +52,29 @@ func (repo *RepositoryPg) NewUser(ctx context.Context, username, password string
 
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-		return false, fmt.Errorf("пользователь с таким именем уже существует: %w", err)
+		return false, -1, fmt.Errorf("пользователь с таким именем уже существует: %w", err)
 	}
 
 	if err != nil {
-		return false, fmt.Errorf("не удалось вставить нового пользователя: %w", err)
+		return false, -1, fmt.Errorf("не удалось вставить нового пользователя: %w", err)
 	}
 
-	return true, nil
+	const b = `
+	SELECT id FROM users
+	WHERE username = $1
+	`
+
+	var id int
+
+	err = repo.db.QueryRow(ctx, b, username).Scan(&id)
+
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, -1, nil
+	}
+
+	if err != nil {
+		return false, -1, fmt.Errorf("ошибка при поиске данных в БД: %w", err)
+	}
+
+	return true, id, nil
 }

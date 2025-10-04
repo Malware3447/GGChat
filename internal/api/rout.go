@@ -23,7 +23,7 @@ func (a *Api) Init() {
 	a.router = chi.NewRouter()
 
 	a.router.Route("/api/v1/users", func(router chi.Router) {
-		router.Get("/verifications/", a.apiService.UsersVerifications)
+		router.Get("/verifications", a.apiService.UsersVerifications)
 		router.Post("/register", a.apiService.UsersRegistrations)
 	})
 
