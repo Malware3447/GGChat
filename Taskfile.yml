@@ -4,7 +4,56 @@ tasks:
   run:
     cmds:
       - go run ./cmd/runner/main.go -config=./config/local.yml
+  
   migrate:run:
     desc: Запуск миграций
     cmds:
       - go run ./cmd/migrate/run/pg/main.go -config=./config/local.yml
+
+  db:up:
+    desc: Запуск PostgreSQL в Docker
+    cmds:
+      - docker-compose up -d postgres
+  
+  db:down:
+    desc: Остановка PostgreSQL
+    cmds:
+      - docker-compose down
+  
+  db:logs:
+    desc: Просмотр логов PostgreSQL
+    cmds:
+      - docker-compose logs -f postgres
+  
+  db:connect:
+    desc: Подключение к PostgreSQL через psql
+    cmds:
+      - docker exec -it ggchat-postgres psql -U demo -d ggchat
+  
+  db:schema:
+    desc: Генерация диаграммы схемы БД
+    cmds:
+      - python3 scripts/generate_db_diagram.py
+  
+  db:reset:
+    desc: Полный сброс БД (удаление данных и пересоздание)
+    cmds:
+      - docker-compose down -v
+      - docker-compose up -d postgres
+      - sleep 5
+      - task: migrate:run
+
+  db:data:insert:
+    desc: Добавление тестовых данных в БД
+    cmds:
+      - docker exec -i ggchat-postgres psql -U demo -d ggchat < scripts/insert_sample_data.sql
+
+  db:dashboard:
+    desc: Генерация полной визуализации БД с данными
+    cmds:
+      - python3 scripts/generate_db_dashboard.py
+
+  db:data:show:
+    desc: Показать данные из всех таблиц
+    cmds:
+      - docker exec ggchat-postgres psql -U demo -d ggchat -c "SELECT 'users' as table_name, count(*) as records FROM users UNION ALL SELECT 'chats', count(*) FROM chats UNION ALL SELECT 'chat_nembers', count(*) FROM chat_nembers UNION ALL SELECT 'message', count(*) FROM message UNION ALL SELECT 'message_status', count(*) FROM message_status;"

@@ -8,12 +8,13 @@ import (
 	"GGChat/internal/service/db"
 	"context"
 	"fmt"
-	"github.com/Malware3447/configo"
-	"github.com/Malware3447/spg"
-	"github.com/sirupsen/logrus"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/Malware3447/configo"
+	"github.com/Malware3447/spg"
+	"github.com/sirupsen/logrus"
 )
 
 func main() {
@@ -33,8 +34,9 @@ func main() {
 	pgService := db.NewDbService(dbPg)
 
 	crutApi := crut.NewCrut(pgService)
+	chat := crut.NewApiChats(pgService)
 
-	router := api.NewApi(crutApi)
+	router := api.NewApi(crutApi, chat)
 
 	router.Init()
 

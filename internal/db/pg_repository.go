@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -77,4 +79,21 @@ func (repo *RepositoryPg) NewUser(ctx context.Context, username, password string
 	}
 
 	return true, id, nil
+}
+
+func (repo *RepositoryPg) NewChat(ctx context.Context, chatName string) (bool, uuid.UUID, error) {
+	const q = `
+		INSERT INTO chats (name)
+		VALUES ($1)
+		returning uuid
+	`
+
+	var ChatId uuid.UUID
+	err := repo.db.QueryRow(ctx, q, chatName).Scan(&ChatId)
+
+	if err != nil {
+		return false, ChatId, fmt.Errorf("не удалось создать чат: %w", err)
+	}
+
+	return true, ChatId, nil
 }

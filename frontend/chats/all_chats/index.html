@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GGChat — Ваши чаты</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary-color: #007AFF;
+            --primary-hover: #005BBF;
+            --background-light: #F9FAFB;
+            --text-dark: #1E293B;
+            --shadow-light: 0 10px 30px rgba(0, 0, 0, 0.08);
+            --border-radius-large: 16px;
+            --transition-speed: 0.25s;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--background-light); color: var(--text-dark); line-height: 1.6; }
+        a { text-decoration: none; color: var(--primary-color); }
+
+        .header { display: flex; justify-content: space-between; align-items: center; padding: 20px 5%; }
+        .logo { font-size: 24px; font-weight: 800; color: var(--primary-color); }
+        .create-btn { padding: 10px 16px; background: var(--primary-color); color: #fff; border-radius: 10px; font-weight: 600; transition: background-color var(--transition-speed), transform var(--transition-speed); border: none; cursor: pointer; }
+        .create-btn:hover { background: var(--primary-hover); transform: translateY(-1px); }
+
+        .page { padding: 10px 5% 40px; }
+        .page-head { display: flex; justify-content: space-between; align-items: center; margin: 10px 0 20px; }
+        .page-title { font-size: 28px; font-weight: 800; }
+
+        .empty-state { background: #fff; border-radius: var(--border-radius-large); box-shadow: var(--shadow-light); padding: 40px; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+        .empty-text { max-width: 560px; }
+        .empty-text h2 { font-size: 24px; font-weight: 700; margin-bottom: 8px; }
+        .empty-text p { color: #64748B; }
+        .empty-illustration { width: 220px; height: 140px; background: radial-gradient(120px 80px at 60% 40%, #CFE6FF, #ffffff); border-radius: 16px; position: relative; box-shadow: var(--shadow-light); }
+        .bubble { position: absolute; background: #fff; border: 1px solid #E2E8F0; border-radius: 12px; box-shadow: var(--shadow-light); }
+        .bubble.one { width: 120px; height: 40px; left: 18px; top: 26px; }
+        .bubble.two { width: 90px; height: 36px; right: 18px; bottom: 24px; }
+        .bubble .dot { width: 6px; height: 6px; background: #94A3B8; border-radius: 50%; position: absolute; top: 50%; transform: translateY(-50%); }
+        .bubble .dot:nth-child(1) { left: 14px; }
+        .bubble .dot:nth-child(2) { left: 28px; }
+        .bubble .dot:nth-child(3) { left: 42px; }
+
+        .list { margin-top: 24px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+        .chat-card { background: #fff; border-radius: 14px; box-shadow: var(--shadow-light); padding: 18px; transition: transform var(--transition-speed), box-shadow var(--transition-speed), border-color var(--transition-speed); border: 1px solid #E2E8F0; cursor: pointer; display: flex; align-items: center; gap: 14px; }
+        .chat-card:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(0,0,0,0.08); border-color: #D1D5DB; }
+        .avatar { width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #E0F2FF, #F3F8FF); color: var(--primary-color); font-weight: 800; display: grid; place-items: center; border: 1px solid #E2E8F0; }
+        .meta { flex: 1; min-width: 0; }
+        .name { font-weight: 700; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .subtitle { color: #64748B; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        /* Modal */
+        .modal-backdrop { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.35); display: none; align-items: center; justify-content: center; z-index: 40; }
+        .modal { width: 100%; max-width: 420px; background: #fff; border-radius: 16px; box-shadow: var(--shadow-light); padding: 22px; transform: translateY(10px); opacity: 0; transition: opacity var(--transition-speed), transform var(--transition-speed); }
+        .modal.open { transform: translateY(0); opacity: 1; }
+        .modal-title { font-weight: 700; font-size: 18px; margin-bottom: 14px; }
+        .input-group { margin-bottom: 16px; position: relative; }
+        .input-group label { position: absolute; top: 14px; left: 14px; color: #94A3B8; transition: 0.2s ease-out; pointer-events: none; }
+        .input-group input:focus ~ label, .input-group input:not(:placeholder-shown) ~ label { top: -10px; left: 10px; font-size: 12px; background-color: white; padding: 0 5px; color: var(--primary-color); }
+        .input-group input { width: 100%; padding: 14px; border: 1px solid #E2E8F0; border-radius: 10px; font-size: 16px; transition: border-color 0.3s; }
+        .input-group input:focus { outline: none; border-color: var(--primary-color); }
+        .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 8px; }
+        .btn { padding: 10px 14px; border-radius: 10px; font-weight: 600; border: none; cursor: pointer; }
+        .btn.secondary { background: #F1F5F9; color: #0F172A; }
+        .btn.primary { background: var(--primary-color); color: #fff; }
+        .btn.primary:hover { background: var(--primary-hover); }
+
+        @media (max-width: 1100px) {
+            .list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
+        @media (max-width: 720px) {
+            .header { padding: 16px 18px; }
+            .page { padding: 10px 18px 32px; }
+            .list { grid-template-columns: 1fr; }
+            .empty-state { flex-direction: column; align-items: flex-start; }
+            .empty-illustration { width: 100%; height: 120px; }
+        }
+    </style>
+</head>
+<body>
+
+<header class="header">
+    <div class="logo">GGChat</div>
+    <button id="open-create" class="create-btn">Создать чат</button>
+    </header>
+
+<main class="page">
+    <div class="page-head">
+        <div class="page-title">Ваши чаты</div>
+    </div>
+
+    <section id="empty" class="empty-state" style="display: none;">
+        <div class="empty-text">
+            <h2>Пока у вас нет чатов</h2>
+            <p>Нажмите «Создать чат», чтобы начать новый разговор. Вы сможете добавить собеседников позже.</p>
+        </div>
+        <div class="empty-illustration">
+            <div class="bubble one">
+                <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+            </div>
+            <div class="bubble two">
+                <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+            </div>
+        </div>
+    </section>
+
+    <section id="list" class="list" style="display: none;"></section>
+</main>
+
+<!-- Modal create chat -->
+<div id="modal-backdrop" class="modal-backdrop">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="create-title">
+        <div class="modal-title" id="create-title">Новый чат</div>
+        <form id="create-form">
+            <div class="input-group">
+                <input id="chat-name" type="text" placeholder=" " autocomplete="off" required>
+                <label for="chat-name">Название чата</label>
+            </div>
+            <div class="modal-actions">
+                <button type="button" id="cancel-create" class="btn secondary">Отмена</button>
+                <button type="submit" class="btn primary">Создать</button>
+            </div>
+        </form>
+    </div>
+    </div>
+
+<script>
+    const STORAGE_KEY = 'ggchat_chats';
+    const API_BASE_URL = 'http://localhost:8080/api/v1/chats';
+
+    function readChats() {
+        try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            return Array.isArray(JSON.parse(raw)) ? JSON.parse(raw) : [];
+        } catch (_) { return []; }
+    }
+
+    function writeChats(chats) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(chats));
+    }
+
+    // ID теперь приходит с бэкенда как UUID
+
+    function initialsFrom(name) {
+        const words = name.trim().split(/\s+/);
+        if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+        return (words[0][0] + words[1][0]).toUpperCase();
+    }
+
+    function render() {
+        const list = document.getElementById('list');
+        const empty = document.getElementById('empty');
+        const chats = readChats();
+
+        if (!chats.length) {
+            list.style.display = 'none';
+            empty.style.display = '';
+            list.innerHTML = '';
+            return;
+        }
+
+        empty.style.display = 'none';
+        list.style.display = 'grid';
+        list.innerHTML = chats.map(chat => (
+            `<article class="chat-card" data-id="${chat.id}">
+                <div class="avatar">${initialsFrom(chat.name)}</div>
+                <div class="meta">
+                    <div class="name" title="${chat.name}">${chat.name}</div>
+                    <div class="subtitle">Сообщений пока нет</div>
+                </div>
+            </article>`
+        )).join('');
+
+        list.querySelectorAll('.chat-card').forEach(card => {
+            card.addEventListener('click', () => {
+                const id = card.getAttribute('data-id');
+                const name = card.querySelector('.name')?.textContent || '';
+                // Переход на страницу чата с UUID и названием (фоллбек, если нет localStorage)
+                window.location.href = '/home/ubuntu/CursorProjects/GGChat/frontend/chats/chat/index.html?id=' + encodeURIComponent(id) + '&name=' + encodeURIComponent(name);
+            });
+        });
+    }
+
+    // Modal controls
+    const openBtn = document.getElementById('open-create');
+    const backdrop = document.getElementById('modal-backdrop');
+    const modal = backdrop.querySelector('.modal');
+    const cancelBtn = document.getElementById('cancel-create');
+    const form = document.getElementById('create-form');
+    const input = document.getElementById('chat-name');
+
+    function openModal() {
+        backdrop.style.display = 'flex';
+        requestAnimationFrame(() => { modal.classList.add('open'); input.focus(); });
+    }
+    function closeModal() {
+        modal.classList.remove('open');
+        setTimeout(() => { backdrop.style.display = 'none'; input.value = ''; }, 200);
+    }
+
+    openBtn.addEventListener('click', openModal);
+    cancelBtn.addEventListener('click', closeModal);
+    backdrop.addEventListener('click', (e) => { if (e.target === backdrop) closeModal(); });
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const name = input.value.trim();
+        if (!name) return;
+
+        try {
+            const resp = await fetch(`${API_BASE_URL}/new_chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chat_name: name })
+            });
+
+            const data = await resp.json().catch(() => ({}));
+
+            if (!resp.ok || !data.status) {
+                alert((data && data.error) || 'Не удалось создать чат. Попробуйте позже.');
+                return;
+            }
+
+            const chats = readChats();
+            chats.unshift({ id: data.uuid, name: data.chat_name });
+            writeChats(chats);
+
+            closeModal();
+            render();
+        } catch (err) {
+            alert('Ошибка соединения с сервером. Убедитесь, что он запущен на 8080.');
+        }
+    });
+
+    // Initial render
+    render();
+</script>
+
+</body>
+</html>
+

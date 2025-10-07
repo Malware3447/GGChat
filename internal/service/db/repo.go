@@ -3,6 +3,8 @@ package db
 import (
 	"GGChat/internal/db"
 	"context"
+
+	"github.com/google/uuid"
 )
 
 type DbService struct {
@@ -19,4 +21,8 @@ func (ds *DbService) UsersVerification(ctx context.Context, username, password s
 
 func (ds *DbService) NewUser(ctx context.Context, username, password string) (bool, int, error) {
 	return ds.repo.NewUser(ctx, username, password)
+}
+
+func (ds *DbService) NewChat(ctx context.Context, chatName string) (bool, uuid.UUID, error) {
+	return ds.repo.NewChat(ctx, chatName)
 }

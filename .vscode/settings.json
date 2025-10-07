@@ -1,0 +1,18 @@
+{
+  "sqltools.connections": [
+    {
+      "name": "GGChat PostgreSQL",
+      "driver": "PostgreSQL",
+      "server": "localhost",
+      "port": 5432,
+      "database": "ggchat",
+      "username": "postgres",
+      "password": "password",
+      "connectionTimeout": 60
+    }
+  ],
+  "sqltools.useNodeRuntime": true,
+  "sqltools.results": {
+    "location": "nextToTab"
+  }
+}

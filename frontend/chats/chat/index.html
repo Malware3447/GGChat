@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GGChat — Чат</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary-color: #007AFF;
+            --primary-hover: #005BBF;
+            --background-light: #F9FAFB;
+            --text-dark: #1E293B;
+            --shadow-light: 0 10px 30px rgba(0, 0, 0, 0.08);
+            --border-radius-large: 16px;
+            --transition-speed: 0.25s;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--background-light); color: var(--text-dark); line-height: 1.6; }
+        a { text-decoration: none; color: var(--primary-color); }
+
+        .header { display: flex; justify-content: space-between; align-items: center; padding: 20px 5%; }
+        .logo { font-size: 24px; font-weight: 800; color: var(--primary-color); cursor: pointer; }
+        .actions { display: flex; align-items: center; gap: 10px; }
+        .icon-btn { height: 40px; width: 40px; display: grid; place-items: center; border-radius: 10px; border: 1px solid #E2E8F0; background: #fff; cursor: pointer; transition: background var(--transition-speed), transform var(--transition-speed), border-color var(--transition-speed); }
+        .icon-btn:hover { background: #F8FAFC; transform: translateY(-1px); border-color: #D1D5DB; }
+
+        .container { padding: 0 5% 40px; }
+        .chat-head { display: flex; align-items: center; justify-content: space-between; margin: 6px 0 16px; }
+        .chat-head .left { display: flex; align-items: center; gap: 10px; }
+        .title { font-size: 22px; font-weight: 800; }
+        .subtitle { color: #64748B; font-size: 14px; }
+
+        .chat { background: #fff; border-radius: var(--border-radius-large); box-shadow: var(--shadow-light); min-height: calc(100vh - 190px); display: grid; grid-template-rows: 1fr auto; border: 1px solid #E2E8F0; }
+        .messages { padding: 18px; overflow: auto; }
+        .message-empty { margin: 20px; padding: 16px; border: 1px dashed #CBD5E1; border-radius: 12px; color: #64748B; text-align: center; }
+        .composer { display: flex; gap: 10px; padding: 14px; border-top: 1px solid #E2E8F0; }
+        .input { flex: 1; padding: 12px 14px; border: 1px solid #E2E8F0; border-radius: 12px; font-size: 16px; }
+        .send { background: var(--primary-color); color: #fff; border: none; padding: 12px 18px; border-radius: 12px; font-weight: 600; cursor: pointer; }
+        .send:hover { background: var(--primary-hover); }
+
+        /* Modal */
+        .modal-backdrop { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.35); display: none; align-items: center; justify-content: center; z-index: 40; }
+        .modal { width: 100%; max-width: 460px; background: #fff; border-radius: 16px; box-shadow: var(--shadow-light); padding: 22px; transform: translateY(10px); opacity: 0; transition: opacity var(--transition-speed), transform var(--transition-speed); }
+        .modal.open { transform: translateY(0); opacity: 1; }
+        .modal-title { font-weight: 800; font-size: 18px; margin-bottom: 12px; }
+        .row { display: flex; align-items: center; gap: 10px; margin: 10px 0 2px; }
+        .kbd { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 13px; background: #F1F5F9; border: 1px solid #E2E8F0; border-radius: 8px; padding: 8px 10px; color: #0F172A; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .btn { padding: 10px 14px; border-radius: 10px; font-weight: 600; border: none; cursor: pointer; }
+        .btn.secondary { background: #F1F5F9; color: #0F172A; }
+        .btn.primary { background: var(--primary-color); color: #fff; }
+        .btn.primary:hover { background: var(--primary-hover); }
+        .danger { background: #EF4444; color: #fff; }
+        .danger:hover { background: #DC2626; }
+        .modal-actions { display: flex; gap: 10px; justify-content: space-between; margin-top: 14px; }
+        .left-actions { display: flex; gap: 10px; }
+
+        @media (max-width: 720px) {
+            .header { padding: 16px 18px; }
+            .container { padding: 0 18px 28px; }
+        }
+    </style>
+</head>
+<body>
+
+<header class="header">
+    <div class="logo" id="go-home">GGChat</div>
+    <div class="actions">
+        <button id="open-settings" class="icon-btn" title="Настройки">
+            <!-- simple gear icon -->
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" stroke="#0F172A" stroke-width="1.5"/>
+                <path d="M19.4 13.5a7.6 7.6 0 0 0 .05-3l2.02-1.53-2-3.46-2.44.6a7.63 7.63 0 0 0-2.6-1.5L12 1.5 9.57 4.1a7.63 7.63 0 0 0-2.6 1.5l-2.44-.6-2 3.46 2.02 1.53a7.6 7.6 0 0 0 0 3L2.53 15l2 3.46 2.44-.6c.78.62 1.66 1.12 2.6 1.5L12 22.5l2.43-2.6c.94-.38 1.82-.88 2.6-1.5l2.44.6 2-3.46-2.02-1.54Z" stroke="#94A3B8" stroke-width="1.2"/>
+            </svg>
+        </button>
+    </div>
+</header>
+
+<main class="container">
+    <div class="chat-head">
+        <div class="left">
+            <button id="go-back" class="icon-btn" title="К списку чатов" aria-label="Назад к списку чатов">
+                <!-- left arrow icon -->
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <path d="M15 19l-7-7 7-7" stroke="#0F172A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
+            <div>
+                <div class="title" id="chat-title">Чат</div>
+                <div class="subtitle" id="chat-subtitle">Загрузка…</div>
+            </div>
+        </div>
+        <div></div>
+    </div>
+
+    <section class="chat">
+        <div class="messages" id="messages">
+            <div class="message-empty">Сообщений пока нет. Напишите первое сообщение ниже.</div>
+        </div>
+        <form class="composer" id="composer">
+            <input id="message-input" class="input" type="text" placeholder="Напишите сообщение…" autocomplete="off">
+            <button class="send" type="submit">Отправить</button>
+        </form>
+    </section>
+</main>
+
+<!-- Modal: settings -->
+<div id="modal-backdrop" class="modal-backdrop">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+        <div class="modal-title" id="settings-title">Настройки чата</div>
+
+        <div class="row">
+            <div class="subtitle" style="min-width: 120px;">Номер чата</div>
+            <div id="chat-id-box" class="kbd" style="flex: 1;" title="UUID чата"></div>
+            <button id="copy-id" class="btn secondary">Копировать</button>
+        </div>
+
+        <div class="modal-actions">
+            <div class="left-actions">
+                <button id="delete-chat" class="btn danger">Удалить чат</button>
+            </div>
+            <div>
+                <button id="close-settings" class="btn primary">Готово</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const STORAGE_KEY = 'ggchat_chats';
+
+    function readChats() {
+        try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            const val = JSON.parse(raw);
+            return Array.isArray(val) ? val : [];
+        } catch (_) { return []; }
+    }
+    function writeChats(chats) { localStorage.setItem(STORAGE_KEY, JSON.stringify(chats)); }
+
+    function getParamsFromUrl() {
+        const params = new URLSearchParams(location.search);
+        return {
+            id: params.get('id'),
+            name: params.get('name') || params.get('chat_name') || null
+        };
+    }
+
+    function findChatById(id) {
+        return readChats().find(c => c.id === id);
+    }
+
+    function navigateToList() {
+        if (history.length > 1) { history.back(); return; }
+        // Фоллбек на страницу списка чатов, если доступна
+        location.href = '/home/ubuntu/CursorProjects/GGChat/frontend/chats/all_chats/index.html';
+    }
+
+    // UI Refs
+    const titleEl = document.getElementById('chat-title');
+    const subtitleEl = document.getElementById('chat-subtitle');
+    const goHome = document.getElementById('go-home');
+    const goBack = document.getElementById('go-back');
+    const messagesEl = document.getElementById('messages');
+
+    const openSettingsBtn = document.getElementById('open-settings');
+    const backdrop = document.getElementById('modal-backdrop');
+    const modal = backdrop.querySelector('.modal');
+    const closeSettingsBtn = document.getElementById('close-settings');
+    const deleteBtn = document.getElementById('delete-chat');
+    const copyIdBtn = document.getElementById('copy-id');
+    const idBox = document.getElementById('chat-id-box');
+
+    const composerForm = document.getElementById('composer');
+    const messageInput = document.getElementById('message-input');
+
+    // State
+    const { id: chatIdFromUrl, name: chatNameFromUrl } = getParamsFromUrl();
+    let chat = chatIdFromUrl ? findChatById(chatIdFromUrl) : null;
+
+    function renderChat() {
+        // Если есть объект чата, но в URL пришло название — используем его (источник истины при навигации)
+        if (chat && chatNameFromUrl) {
+            chat = { ...chat, name: chatNameFromUrl };
+        }
+        // Пытаемся восстановить данные из URL, если локально чата нет (например, открыли по прямой ссылке)
+        if (!chat && chatIdFromUrl) {
+            chat = { id: chatIdFromUrl, name: chatNameFromUrl || 'Без названия' };
+        }
+
+        if (!chat) {
+            titleEl.textContent = 'Чат не найден';
+            subtitleEl.textContent = 'Похоже, этот чат был удалён или не существует';
+            messagesEl.innerHTML = '<div class="message-empty">Нет данных для отображения</div>';
+            return;
+        }
+        // Поддержка возможной старой схемы хранения { chat_name: string }
+        const displayName = (chat.name && chat.name.trim()) || (chat.chat_name && chat.chat_name.trim()) || chatNameFromUrl || 'Без названия';
+        titleEl.textContent = displayName;
+        subtitleEl.textContent = 'UUID: ' + chat.id;
+        idBox.textContent = chat.id;
+
+        // Нормализуем хранилище: если у записи нет name, но есть chat_name — допишем name
+        if (!chat.name && chat.chat_name) {
+            const all = readChats();
+            const idx = all.findIndex(c => c.id === chat.id);
+            if (idx !== -1) {
+                all[idx] = { ...all[idx], name: all[idx].name || all[idx].chat_name };
+                writeChats(all);
+            }
+        }
+    }
+
+    function openModal() {
+        backdrop.style.display = 'flex';
+        requestAnimationFrame(() => { modal.classList.add('open'); });
+    }
+    function closeModal() {
+        modal.classList.remove('open');
+        setTimeout(() => { backdrop.style.display = 'none'; }, 200);
+    }
+
+    // Events
+    goHome.addEventListener('click', navigateToList);
+    goBack.addEventListener('click', navigateToList);
+    openSettingsBtn.addEventListener('click', openModal);
+    closeSettingsBtn.addEventListener('click', closeModal);
+    backdrop.addEventListener('click', (e) => { if (e.target === backdrop) closeModal(); });
+
+    copyIdBtn.addEventListener('click', async () => {
+        if (!chat) return;
+        try { await navigator.clipboard.writeText(chat.id); copyIdBtn.textContent = 'Скопировано'; setTimeout(() => copyIdBtn.textContent = 'Копировать', 1200); } catch (_) {}
+    });
+
+    deleteBtn.addEventListener('click', () => {
+        if (!chat) return;
+        if (!confirm('Удалить чат «' + (chat.name || 'Без названия') + '»?')) return;
+        const items = readChats().filter(c => c.id !== chat.id);
+        writeChats(items);
+        closeModal();
+        navigateToList();
+    });
+
+    composerForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const text = messageInput.value.trim();
+        if (!text) return;
+        // Заглушка добавления сообщения (локально, без бэка)
+        const bubble = document.createElement('div');
+        bubble.className = 'message-empty';
+        bubble.textContent = text;
+        messagesEl.appendChild(bubble);
+        messageInput.value = '';
+    });
+
+    // Init
+    renderChat();
+</script>
+
+</body>
+</html>
+

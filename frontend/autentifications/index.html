@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GGChat — Вход и Регистрация</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+
+    <style>
+        /* CSS-Переменные */
+        :root {
+            --primary-color: #007AFF;
+            --primary-hover: #005BBF;
+            --background-light: #F9FAFB;
+            --text-dark: #1E293B;
+            --shadow-light: 0 10px 30px rgba(0, 0, 0, 0.08);
+            --border-radius-large: 16px;
+            --transition-speed: 0.4s; /* Скорость анимации для форм */
+            --liquid-duration: 1.0s; /* Скорость анимации для волны */
+        }
+
+        /* Базовые стили */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--background-light); color: var(--text-dark); line-height: 1.6; }
+        a { text-decoration: none; color: var(--primary-color); }
+
+        /* Шапка */
+        .header { display: flex; justify-content: space-between; align-items: center; padding: 20px 5%; }
+        .logo { font-size: 24px; font-weight: 800; color: var(--primary-color); }
+        .login-btn { padding: 8px 16px; border: 1px solid var(--primary-color); color: var(--primary-color); border-radius: 8px; font-weight: 600; transition: all 0.3s; cursor: pointer; }
+        .login-btn:hover { background-color: var(--primary-color); color: white; }
+
+        /* Секция Hero/Регистрация */
+        .hero-section { display: flex; justify-content: center; align-items: center; min-height: calc(100vh - 80px); padding: 40px 5%; gap: 60px; }
+        .hero-text { max-width: 450px; }
+        .hero-text h1 { font-size: 48px; font-weight: 800; margin-bottom: 20px; line-height: 1.1; }
+        .hero-text p { font-size: 18px; color: #64748B; }
+
+        /* Контейнер для смены форм - ВАЖНО: position: relative и overflow: hidden */
+        .form-container {
+            position: relative;
+            height: 480px;
+            max-width: 400px;
+            width: 100%;
+            overflow: hidden;
+            border-radius: var(--border-radius-large);
+            box-shadow: var(--shadow-light);
+        }
+
+        /* Стиль карточки (общий) */
+        .card {
+            position: absolute;
+            top: 0;
+            left: 0;
+            background-color: white;
+            padding: 40px;
+            border-radius: var(--border-radius-large);
+            width: 100%;
+            transition: opacity var(--transition-speed), transform var(--transition-speed);
+        }
+
+        .card h2 {
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 25px;
+            text-align: center;
+        }
+
+        /* Классы для анимации */
+        .hidden {
+            opacity: 0;
+            transform: scale(0.95);
+            pointer-events: none;
+        }
+        .visible {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        /* ------------------------------------- */
+        /* ЛОКАЛЬНЫЙ ОВЕРЛЕЙ ДЛЯ ПЕРЕХОДА */
+        /* ------------------------------------- */
+        .local-transition-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            pointer-events: none;
+            opacity: 0;
+
+            /* Настройки для "жидкого параболического" эффекта:
+               clip-path и opacity будут контролироваться JavaScript
+            */
+            transition: clip-path var(--liquid-duration) cubic-bezier(0.8, 0, 0.2, 1), opacity 0.1s;
+        }
+
+        /* Стили полей ввода и кнопок (без изменений) */
+        .input-group { margin-bottom: 20px; position: relative; }
+        .input-group label { position: absolute; top: 15px; left: 15px; color: #94A3B8; transition: 0.2s ease-out; pointer-events: none; }
+        .input-group input:focus ~ label, .input-group input:not(:placeholder-shown) ~ label { top: -10px; left: 10px; font-size: 12px; background-color: white; padding: 0 5px; color: var(--primary-color); }
+        .input-group input { width: 100%; padding: 15px; border: 1px solid #E2E8F0; border-radius: 10px; font-size: 16px; transition: border-color 0.3s; color: transparent; }
+        .input-group input:focus { outline: none; border-color: var(--primary-color); color: var(--text-dark); }
+        .input-group input:not(:placeholder-shown) { color: var(--text-dark); }
+        .cta-button { width: 100%; background-color: var(--primary-color); color: white; border: none; padding: 15px 25px; border-radius: 10px; font-weight: 600; cursor: pointer; font-size: 18px; transition: background-color 0.3s, transform 0.2s, opacity 0.3s; margin-top: 10px; }
+        .cta-button:hover:not(:disabled) { background-color: var(--primary-hover); transform: translateY(-1px); }
+        .cta-button:disabled { cursor: not-allowed; opacity: 0.7; }
+        .link-text { text-align: center; margin-top: 20px; font-size: 14px; }
+
+        /* Адаптивность (без изменений) */
+        @media (max-width: 800px) {
+            .hero-section { flex-direction: column; text-align: center; min-height: auto; padding-top: 80px; }
+            .hero-text { max-width: 100%; }
+            .hero-text h1 { font-size: 36px; }
+            .form-container { margin-top: 40px; }
+        }
+    </style>
+</head>
+<body>
+
+<header class="header">
+    <div class="logo">GGChat</div>
+    <a href="#" id="show-login-header" class="login-btn">Войти</a>
+</header>
+
+<section class="hero-section">
+
+    <div class="hero-text">
+        <h1 id="main-heading">GGChat. <br>Общайтесь проще.</h1>
+        <p>Мгновенные сообщения, групповые чаты и идеальная конфиденциальность. Регистрация занимает всего минуту!</p>
+    </div>
+
+    <div class="form-container">
+
+        <div id="local-transition-overlay" class="local-transition-overlay"></div>
+
+        <div id="register-card" class="card visible">
+            <h2>Создайте свой аккаунт</h2>
+
+            <form action="#" method="POST">
+                <div class="input-group">
+                    <input type="text" id="reg-username" name="username" placeholder=" " required>
+                    <label for="reg-username">Имя пользователя (никнейм)</label>
+                </div>
+                <div class="input-group">
+                    <input type="password" id="reg-password" name="password" placeholder=" " required>
+                    <label for="reg-password">Пароль</label>
+                </div>
+                <div class="input-group">
+                    <input type="password" id="reg-confirm-password" name="confirm-password" placeholder=" " required>
+                    <label for="reg-confirm-password">Повторите пароль</label>
+                </div>
+
+                <button type="submit" class="cta-button">
+                    Зарегистрироваться
+                </button>
+            </form>
+
+            <div class="link-text">
+                Уже есть аккаунт? <a href="#" id="link-to-login">Войти</a>
+            </div>
+        </div>
+
+        <div id="login-card" class="card hidden">
+            <h2>Вход в аккаунт</h2>
+
+            <form action="#" method="POST">
+                <div class="input-group">
+                    <input type="text" id="log-username" name="username" placeholder=" " required>
+                    <label for="log-username">Имя пользователя (никнейм)</label>
+                </div>
+                <div class="input-group">
+                    <input type="password" id="log-password" name="password" placeholder=" " required>
+                    <label for="log-password">Пароль</label>
+                </div>
+
+                <button type="submit" class="cta-button">
+                    Войти в GGChat
+                </button>
+            </form>
+
+            <div class="link-text">
+                Нет аккаунта? <a href="#" id="link-to-register">Зарегистрироваться</a>
+            </div>
+        </div>
+
+    </div>
+</section>
+
+<footer class="footer"></footer>
+
+<script>
+    const registerCard = document.getElementById('register-card');
+    const loginCard = document.getElementById('login-card');
+    const mainHeading = document.getElementById('main-heading');
+    const localOverlay = document.getElementById('local-transition-overlay');
+
+    const duration = 1000; // Длительность перехода в мс (1.0s)
+    const switchPoint = duration / 2; // Точка смены форм (500 мс)
+
+    /**
+     * ПЕРЕХОД: Вход (сверху-справа -> снизу-слева)
+     */
+    function showLoginWithTransition(event) {
+        event.preventDefault();
+
+        // 1. Установка начального состояния и градиента
+        localOverlay.style.background = 'linear-gradient(to bottom left, var(--primary-color) 0%, white 90%)';
+        localOverlay.style.clipPath = 'circle(0% at 100% 0%)'; // Начинаем с 0% в правом верхнем углу
+        localOverlay.style.opacity = '1';
+
+        // 2. Запуск анимации: расширяемся до левого нижнего угла
+        void localOverlay.offsetWidth; // Принудительная перерисовка
+        localOverlay.style.clipPath = 'circle(150% at 0% 100%)';
+
+        // 3. Обновление заголовка
+        mainHeading.innerHTML = "С возвращением! <br>Просто войдите.";
+
+        // 4. Смена форм - происходит на полпути (500 мс), когда оверлей полностью заполнен
+        setTimeout(() => {
+            registerCard.classList.remove('visible');
+            registerCard.classList.add('hidden');
+            loginCard.classList.remove('hidden');
+            loginCard.classList.add('visible');
+        }, switchPoint); // Смена формы через 500 мс
+
+        // 5. Сброс оверлея - происходит в конце (1000 мс)
+        setTimeout(() => {
+            localOverlay.style.opacity = '0';
+            // Сброс clip-path в начальное состояние, чтобы при следующем вызове анимация началась корректно
+            // Мы сбрасываем его в начальное состояние анимации "Вход", которое было (0% at 100% 0%)
+            localOverlay.style.clipPath = 'circle(0% at 100% 0%)';
+        }, duration);
+    }
+
+    /**
+     * ПЕРЕХОД: Регистрация (снизу-слева -> сверху-справа)
+     */
+    function showRegisterWithTransition(event) {
+        event.preventDefault();
+
+        // 1. Установка начального состояния и градиента
+        localOverlay.style.background = 'linear-gradient(to top right, var(--primary-color) 0%, white 90%)';
+        localOverlay.style.clipPath = 'circle(0% at 0% 100%)'; // Начинаем с 0% в левом нижнем углу
+        localOverlay.style.opacity = '1';
+
+        // 2. Запуск анимации: расширяемся до правого верхнего угла
+        void localOverlay.offsetWidth; // Принудительная перерисовка
+        localOverlay.style.clipPath = 'circle(150% at 100% 0%)';
+
+        // 3. Обновляем заголовок
+        mainHeading.innerHTML = "GGChat. <br>Общайтесь проще.";
+
+        // 4. Смена форм - происходит на полпути (500 мс), когда оверлей полностью заполнен
+        setTimeout(() => {
+            loginCard.classList.remove('visible');
+            loginCard.classList.add('hidden');
+            registerCard.classList.remove('hidden');
+            registerCard.classList.add('visible');
+        }, switchPoint); // Смена формы через 500 мс
+
+        // 5. Сброс оверлея - происходит в конце (1000 мс)
+        setTimeout(() => {
+            localOverlay.style.opacity = '0';
+            // Сброс clip-path в начальное состояние анимации "Регистрация", которое было (0% at 0% 100%)
+            localOverlay.style.clipPath = 'circle(0% at 0% 100%)';
+        }, duration);
+    }
+
+    // API Configuration
+    const API_BASE_URL = 'http://localhost:8080/api/v1/users';
+    
+    // Utility functions
+    function showNotification(message, isError = false) {
+        // Создаем уведомление
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 600;
+            z-index: 1000;
+            transition: all 0.3s ease;
+            background-color: ${isError ? '#EF4444' : '#10B981'};
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        `;
+        notification.textContent = message;
+        document.body.appendChild(notification);
+        
+        // Автоматически удаляем через 5 секунд
+        setTimeout(() => {
+            notification.style.opacity = '0';
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 300);
+        }, 5000);
+    }
+    
+    function setButtonLoading(button, isLoading) {
+        if (isLoading) {
+            button.disabled = true;
+            button.style.opacity = '0.7';
+            button.textContent = 'Загрузка...';
+        } else {
+            button.disabled = false;
+            button.style.opacity = '1';
+            // Восстанавливаем оригинальный текст
+            if (button.closest('#register-card')) {
+                button.textContent = 'Зарегистрироваться';
+            } else {
+                button.textContent = 'Войти в GGChat';
+            }
+        }
+    }
+    
+    // Registration function
+    async function handleRegistration(event) {
+        event.preventDefault();
+        
+        const form = event.target;
+        const username = form.querySelector('#reg-username').value.trim();
+        const password = form.querySelector('#reg-password').value;
+        const confirmPassword = form.querySelector('#reg-confirm-password').value;
+        const submitButton = form.querySelector('.cta-button');
+        
+        // Валидация
+        if (!username || !password || !confirmPassword) {
+            showNotification('Все поля обязательны для заполнения', true);
+            return;
+        }
+        
+        if (password !== confirmPassword) {
+            showNotification('Пароли не совпадают', true);
+            return;
+        }
+        
+        if (password.length < 6) {
+            showNotification('Пароль должен содержать минимум 6 символов', true);
+            return;
+        }
+        
+        if (username.length < 3) {
+            showNotification('Имя пользователя должно содержать минимум 3 символа', true);
+            return;
+        }
+        
+        setButtonLoading(submitButton, true);
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/register`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    username: username,
+                    password: password
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok && data.confirmation) {
+                showNotification(data.massage || 'Регистрация успешна!');
+                // Очищаем форму
+                form.reset();
+                // Переключаемся на форму входа
+                setTimeout(() => {
+                    showLoginWithTransition(event);
+                }, 1000);
+            } else {
+                showNotification(data.massage || 'Ошибка регистрации', true);
+            }
+        } catch (error) {
+            console.error('Registration error:', error);
+            showNotification('Ошибка соединения с сервером', true);
+        } finally {
+            setButtonLoading(submitButton, false);
+        }
+    }
+    
+    // Login function
+    async function handleLogin(event) {
+        event.preventDefault();
+        
+        const form = event.target;
+        const username = form.querySelector('#log-username').value.trim();
+        const password = form.querySelector('#log-password').value;
+        const submitButton = form.querySelector('.cta-button');
+        
+        // Валидация
+        if (!username || !password) {
+            showNotification('Все поля обязательны для заполнения', true);
+            return;
+        }
+        
+        if (username.length < 3) {
+            showNotification('Имя пользователя должно содержать минимум 3 символа', true);
+            return;
+        }
+        
+        setButtonLoading(submitButton, true);
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/verifications`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    username: username,
+                    password: password
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok && data.confirmation) {
+                showNotification('Вход выполнен успешно!');
+                // Очищаем форму
+                form.reset();
+                // Здесь можно добавить редирект на главную страницу чата
+                // window.location.href = '/chat';
+            } else {
+                showNotification('Неверный логин или пароль', true);
+            }
+        } catch (error) {
+            console.error('Login error:', error);
+            showNotification('Ошибка соединения с сервером', true);
+        } finally {
+            setButtonLoading(submitButton, false);
+        }
+    }
+    
+    // Привязка всех кнопок
+    document.getElementById('show-login-header').addEventListener('click', showLoginWithTransition);
+    document.getElementById('link-to-login').addEventListener('click', showLoginWithTransition);
+    document.getElementById('link-to-register').addEventListener('click', showRegisterWithTransition);
+    
+    // Привязка обработчиков форм
+    document.querySelector('#register-card form').addEventListener('submit', handleRegistration);
+    document.querySelector('#login-card form').addEventListener('submit', handleLogin);
+</script>
+
+</body>
+</html>

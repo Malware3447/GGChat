@@ -6,8 +6,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/sirupsen/logrus"
 	"net/http"
+
+	"github.com/sirupsen/logrus"
 )
 
 type ApiVerifications struct {
@@ -98,5 +99,4 @@ func (v *ApiVerifications) UsersRegistrations(w http.ResponseWriter, r *http.Req
 		http.Error(w, "Invalid request database", http.StatusBadRequest)
 		return
 	}
-
 }
