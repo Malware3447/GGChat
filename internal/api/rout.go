@@ -24,6 +24,7 @@ func NewApi(apiService *crut.ApiVerifications, apiChat *crut.ApiChats) *Api {
 }
 
 func (a *Api) Init() {
+
 	a.router = chi.NewRouter()
 
 	// CORS middleware
@@ -50,6 +51,7 @@ func (a *Api) Init() {
 
 	a.router.Route("/api/v1/chats", func(router chi.Router) {
 		router.Post("/new_chat", a.apiChat.NewChat)
+		router.Delete("/delete_chat/{uuid}", a.apiChat.DeleteChat)
 	})
 
 	go func() {

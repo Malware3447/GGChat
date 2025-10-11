@@ -82,13 +82,13 @@ func (repo *RepositoryPg) NewUser(ctx context.Context, username, password string
 }
 
 func (repo *RepositoryPg) NewChat(ctx context.Context, chatName string) (bool, uuid.UUID, error) {
+	var ChatId uuid.UUID
 	const q = `
 		INSERT INTO chats (name)
 		VALUES ($1)
 		returning uuid
 	`
 
-	var ChatId uuid.UUID
 	err := repo.db.QueryRow(ctx, q, chatName).Scan(&ChatId)
 
 	if err != nil {
@@ -96,4 +96,55 @@ func (repo *RepositoryPg) NewChat(ctx context.Context, chatName string) (bool, u
 	}
 
 	return true, ChatId, nil
+}
+
+func (repo *RepositoryPg) DeleteChat(ctx context.Context, uuid uuid.UUID) error {
+	const r = `
+		SELECT uuid FROM chats
+		WHERE uuid = $1
+	`
+
+	result, err := repo.db.Exec(ctx, r, uuid)
+	if err != nil {
+		return err
+	}
+	rowsAffected := result.RowsAffected()
+	if rowsAffected == 0 {
+		return fmt.Errorf("Чат не найден или был удален ранее")
+	}
+
+	const q = `
+		DELETE FROM message
+		WHERE chat_id = $1
+	`
+
+	_, err = repo.db.Exec(ctx, q, uuid)
+	if err != nil {
+		return err
+	}
+
+	const w = `
+		DELETE FROM chat_nembers
+		WHERE chat_id = $1
+	`
+
+	_, err = repo.db.Exec(ctx, w, uuid)
+	if err != nil {
+		return err
+	}
+
+	const e = `
+		DELETE FROM chats
+		WHERE uuid = $1
+	`
+
+	result, err = repo.db.Exec(ctx, e, uuid)
+	if err != nil {
+		return err
+	}
+	rowsAffected = result.RowsAffected()
+	if rowsAffected == 0 {
+		return fmt.Errorf("чат не был удален")
+	}
+	return nil
 }

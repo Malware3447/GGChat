@@ -270,7 +270,6 @@
 
     // API Configuration
     const API_BASE_URL = 'http://localhost:8080/api/v1/users';
-    
     // Utility functions
     function showNotification(message, isError = false) {
         // Создаем уведомление
@@ -368,12 +367,6 @@
             
             if (response.ok && data.confirmation) {
                 showNotification(data.massage || 'Регистрация успешна!');
-                // Очищаем форму
-                form.reset();
-                // Переключаемся на форму входа
-                setTimeout(() => {
-                    showLoginWithTransition(event);
-                }, 1000);
             } else {
                 showNotification(data.massage || 'Ошибка регистрации', true);
             }
@@ -423,6 +416,7 @@
             
             if (response.ok && data.confirmation) {
                 showNotification('Вход выполнен успешно!');
+                window.location.href = '/home/ubuntu/CursorProjects/GGChat/frontend/chats/all_chats/allchat.html';
                 // Очищаем форму
                 form.reset();
                 // Здесь можно добавить редирект на главную страницу чата

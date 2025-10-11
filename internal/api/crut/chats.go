@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 )
 
@@ -36,7 +38,7 @@ func (a *ApiChats) NewChat(w http.ResponseWriter, r *http.Request) {
 
 	confirmation, uuid, err := a.repo.NewChat(ctx, body.ChatName)
 	if err != nil {
-		log.Warn("Ошибка создания нового чата.")
+		log.Warn("Ошибка создания нового чата: ", err)
 		http.Error(w, "Error creat new chat", http.StatusBadRequest)
 		return
 	}
@@ -61,4 +63,34 @@ func (a *ApiChats) NewChat(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "couldn't create a new chat", http.StatusBadRequest)
 		return
 	}
+}
+
+func (a *ApiChats) DeleteChat(w http.ResponseWriter, r *http.Request) {
+	log := logrus.New()
+	log.Info("Пришел запрос на удаление чата...")
+	uuidStr := chi.URLParam(r, "uuid")
+	uuid, err := uuid.Parse(uuidStr)
+	if err != nil {
+		log.Warn("Ошибка парсинга uuid: ", err)
+		http.Error(w, "Invalid response", http.StatusBadRequest)
+		return
+	}
+
+	ctx := context.Background()
+	err = a.repo.DeleteChat(ctx, uuid)
+	if err != nil {
+		log.Warn("Ошибка удаления чата: ", err)
+		http.Error(w, "Error request in database", http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Typee", "application-json")
+	w.WriteHeader(http.StatusCreated)
+	if err = json.NewEncoder(w).Encode(nil); err != nil {
+		log.Warn("Ошибка сервера: ", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	log.Info("Чат успешно удален")
 }

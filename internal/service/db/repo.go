@@ -26,3 +26,7 @@ func (ds *DbService) NewUser(ctx context.Context, username, password string) (bo
 func (ds *DbService) NewChat(ctx context.Context, chatName string) (bool, uuid.UUID, error) {
 	return ds.repo.NewChat(ctx, chatName)
 }
+
+func (ds *DbService) DeleteChat(ctx context.Context, uuid uuid.UUID) error {
+	return ds.repo.DeleteChat(ctx, uuid)
+}

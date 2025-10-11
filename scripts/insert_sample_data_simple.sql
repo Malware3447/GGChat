@@ -17,3 +17,4 @@ INSERT INTO message (chat_id, sender_id, content, sent_at) VALUES
 ((SELECT uuid FROM chats WHERE name = 'Общий чат' LIMIT 1), (SELECT id FROM users WHERE username = 'alice' LIMIT 1), 'Привет всем!', NOW()),
 ((SELECT uuid FROM chats WHERE name = 'Общий чат' LIMIT 1), (SELECT id FROM users WHERE username = 'bob' LIMIT 1), 'Привет!', NOW()),
 ((SELECT uuid FROM chats WHERE name = 'Проект' LIMIT 1), (SELECT id FROM users WHERE username = 'alice' LIMIT 1), 'Как дела с проектом?', NOW());
+

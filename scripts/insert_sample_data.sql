@@ -52,3 +52,4 @@ INSERT INTO message_status (message_id, user_id, status, updated_at) VALUES
 (5, (SELECT id FROM users WHERE username = 'alice'), 'read', '2024-01-16 09:53:00'),
 (6, (SELECT id FROM users WHERE username = 'bob'), 'read', '2024-01-16 10:02:00'),
 (7, (SELECT id FROM users WHERE username = 'alice'), 'read', '2024-01-16 10:03:00);
+

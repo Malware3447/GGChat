@@ -138,7 +138,9 @@
             return Array.isArray(val) ? val : [];
         } catch (_) { return []; }
     }
-    function writeChats(chats) { localStorage.setItem(STORAGE_KEY, JSON.stringify(chats)); }
+    function writeChats(chats) { 
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(chats)); 
+    }
 
     function getParamsFromUrl() {
         const params = new URLSearchParams(location.search);
@@ -154,8 +156,7 @@
 
     function navigateToList() {
         if (history.length > 1) { history.back(); return; }
-        // Фоллбек на страницу списка чатов, если доступна
-        location.href = '/home/ubuntu/CursorProjects/GGChat/frontend/chats/all_chats/index.html';
+        location.replace('/home/ubuntu/CursorProjects/GGChat/frontend/chats/all_chats/allchat.html');
     }
 
     // UI Refs
@@ -236,7 +237,6 @@
 
     deleteBtn.addEventListener('click', () => {
         if (!chat) return;
-        if (!confirm('Удалить чат «' + (chat.name || 'Без названия') + '»?')) return;
         const items = readChats().filter(c => c.id !== chat.id);
         writeChats(items);
         closeModal();
