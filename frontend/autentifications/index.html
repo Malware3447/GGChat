@@ -416,11 +416,26 @@
             
             if (response.ok && data.confirmation) {
                 showNotification('Вход выполнен успешно!');
-                window.location.href = '/home/ubuntu/CursorProjects/GGChat/frontend/chats/all_chats/allchat.html';
+                // Получаем актуальный список чатов с сервера перед переходом
+                try {
+                    const response = await fetch(`${API_BASE_URL.replace('/users', '/chats')}/all_chats`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.status && Array.isArray(data.chats)) {
+                            // Преобразуем данные в формат, который использует приложение
+                            const chats = data.chats.map(chat => ({
+                                id: chat.uuid,
+                                name: chat.name
+                            })).filter(chat => chat.id && chat.name);
+                            localStorage.setItem('ggchat_chats', JSON.stringify(chats));
+                        }
+                    }
+                } catch (error) {
+                    console.error('Ошибка при получении списка чатов:', error);
+                }
+                window.location.href = '../chats/all_chats/allchat.html';
                 // Очищаем форму
                 form.reset();
-                // Здесь можно добавить редирект на главную страницу чата
-                // window.location.href = '/chat';
             } else {
                 showNotification('Неверный логин или пароль', true);
             }

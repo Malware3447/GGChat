@@ -52,6 +52,7 @@ func (a *Api) Init() {
 	a.router.Route("/api/v1/chats", func(router chi.Router) {
 		router.Post("/new_chat", a.apiChat.NewChat)
 		router.Delete("/delete_chat/{uuid}", a.apiChat.DeleteChat)
+		router.Get("/all_chats", a.apiChat.GetAllChats)
 	})
 
 	go func() {

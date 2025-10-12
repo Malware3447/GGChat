@@ -1,6 +1,7 @@
 package db
 
 import (
+	"GGChat/internal/models/chats"
 	"context"
 	"errors"
 	"fmt"
@@ -147,4 +148,32 @@ func (repo *RepositoryPg) DeleteChat(ctx context.Context, uuid uuid.UUID) error 
 		return fmt.Errorf("чат не был удален")
 	}
 	return nil
+}
+
+func (repo *RepositoryPg) GetAllChats(ctx context.Context) ([]chats.Chat, error) {
+	const q = `
+		SELECT uuid, name FROM chats
+	`
+
+	rows, err := repo.db.Query(ctx, q)
+	if err != nil {
+		return nil, fmt.Errorf("не удалось получить список чатов: %w", err)
+	}
+	defer rows.Close()
+
+	var Chats []chats.Chat
+	for rows.Next() {
+		var chat chats.Chat
+		err := rows.Scan(&chat.Uuid, &chat.Name)
+		if err != nil {
+			return nil, fmt.Errorf("ошибка при сканировании данных чата: %w", err)
+		}
+		Chats = append(Chats, chat)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("ошибка при итерации по результатам: %w", err)
+	}
+
+	return Chats, nil
 }

@@ -2,6 +2,7 @@ package db
 
 import (
 	"GGChat/internal/db"
+	"GGChat/internal/models/chats"
 	"context"
 
 	"github.com/google/uuid"
@@ -29,4 +30,8 @@ func (ds *DbService) NewChat(ctx context.Context, chatName string) (bool, uuid.U
 
 func (ds *DbService) DeleteChat(ctx context.Context, uuid uuid.UUID) error {
 	return ds.repo.DeleteChat(ctx, uuid)
+}
+
+func (ds *DbService) GetAllChats(ctx context.Context) ([]chats.Chat, error) {
+	return ds.repo.GetAllChats(ctx)
 }

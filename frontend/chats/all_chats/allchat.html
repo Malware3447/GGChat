@@ -125,118 +125,132 @@
         </form>
     </div>
     </div>
+    <script>
+        // Элементы DOM
+        const openCreateBtn = document.getElementById('open-create');
+        const modalBackdrop = document.getElementById('modal-backdrop');
+        const cancelCreateBtn = document.getElementById('cancel-create');
+        const createForm = document.getElementById('create-form');
+        const chatNameInput = document.getElementById('chat-name');
+        const emptyState = document.getElementById('empty');
+        const listSection = document.getElementById('list');
 
-<script>
-    const STORAGE_KEY = 'ggchat_chats';
-    const API_BASE_URL = 'http://localhost:8080/api/v1/chats';
+        // Открытие модального окна создания чата
+        openCreateBtn.addEventListener('click', () => {
+            modalBackdrop.style.display = 'flex';
+            setTimeout(() => {
+                modalBackdrop.classList.add('open');
+            }, 10);
+            chatNameInput.focus();
+        });
 
-    function readChats() {
-        try {
-            const raw = localStorage.getItem(STORAGE_KEY);
-            return Array.isArray(JSON.parse(raw)) ? JSON.parse(raw) : [];
-        } catch (_) { return []; }
-    }
-
-    function writeChats(chats) {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(chats));
-    }
-
-    // ID теперь приходит с бэкенда как UUID
-
-    function initialsFrom(name) {
-        const words = name.trim().split(/\s+/);
-        if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
-        return (words[0][0] + words[1][0]).toUpperCase();
-    }
-
-    function render() {
-        const list = document.getElementById('list');
-        const empty = document.getElementById('empty');
-        const chats = readChats();
-
-        if (!chats.length) {
-            list.style.display = 'none';
-            empty.style.display = '';
-            list.innerHTML = '';
-            return;
+        // Закрытие модального окна создания чата
+        function closeCreateModal() {
+            modalBackdrop.classList.remove('open');
+            setTimeout(() => {
+                modalBackdrop.style.display = 'none';
+            }, 250);
+            createForm.reset();
         }
 
-        empty.style.display = 'none';
-        list.style.display = 'grid';
-        list.innerHTML = chats.map(chat => (
-            `<article class="chat-card" data-id="${chat.id}">
-                <div class="avatar">${initialsFrom(chat.name)}</div>
-                <div class="meta">
-                    <div class="name" title="${chat.name}">${chat.name}</div>
-                    <div class="subtitle">Сообщений пока нет</div>
-                </div>
-            </article>`
-        )).join('');
+        // Закрытие модального окна по кнопке отмены
+        cancelCreateBtn.addEventListener('click', closeCreateModal);
 
-        list.querySelectorAll('.chat-card').forEach(card => {
-            card.addEventListener('click', () => {
-                const id = card.getAttribute('data-id');
-                const name = card.querySelector('.name')?.textContent || '';
-                // Переход на страницу чата с UUID и названием (фоллбек, если нет localStorage)
-                window.location.href = '../chat/index.html?id=' + encodeURIComponent(id) + '&name=' + encodeURIComponent(name);
-            });
+        // Закрытие модального окна по клику на backdrop
+        modalBackdrop.addEventListener('click', (e) => {
+            if (e.target === modalBackdrop) {
+                closeCreateModal();
+            }
         });
-    }
 
-    // Modal controls
-    const openBtn = document.getElementById('open-create');
-    const backdrop = document.getElementById('modal-backdrop');
-    const modal = backdrop.querySelector('.modal');
-    const cancelBtn = document.getElementById('cancel-create');
-    const form = document.getElementById('create-form');
-    const input = document.getElementById('chat-name');
+        // Создание нового чата
+        createForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const chatName = chatNameInput.value.trim();
+            if (!chatName) return;
+            
+            try {
+                // Отправка POST запроса для создания чата
+                const response = await fetch('http://localhost:8080/api/v1/chats/new_chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ chat_name: chatName })
+                });
+                
+                if (response.ok) {
+                    // Закрываем модальное окно
+                    closeCreateModal();
+                    
+                    // Обновляем список чатов
+                    await loadChats();
+                } else {
+                    console.error('Ошибка при создании чата:', response.status);
+                }
+            } catch (error) {
+                console.error('Ошибка при создании чата:', error);
+            }
+        });
 
-    function openModal() {
-        backdrop.style.display = 'flex';
-        requestAnimationFrame(() => { modal.classList.add('open'); input.focus(); });
-    }
-    function closeModal() {
-        modal.classList.remove('open');
-        setTimeout(() => { backdrop.style.display = 'none'; input.value = ''; }, 200);
-    }
+        // Загрузка списка чатов
+        async function loadChats() {
+            try {
+                const response = await fetch('http://localhost:8080/api/v1/chats/all_chats');
+                
+                if (response.ok) {
+                    const chats = await response.json();
+                    displayChats(chats);
+                } else {
+                    console.error('Ошибка при загрузке чатов:', response.status);
+                    displayChats([]); // Отображаем пустой список в случае ошибки
+                }
+            } catch (error) {
+                console.error('Ошибка при загрузке чатов:', error);
+                displayChats([]); // Отображаем пустой список в случае ошибки
+            }
+        }
 
-    openBtn.addEventListener('click', openModal);
-    cancelBtn.addEventListener('click', closeModal);
-    backdrop.addEventListener('click', (e) => { if (e.target === backdrop) closeModal(); });
-
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const name = input.value.trim();
-        if (!name) return;
-
-        try {
-            const resp = await fetch(`${API_BASE_URL}/new_chat`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ chat_name: name })
-            });
-
-            const data = await resp.json().catch(() => ({}));
-
-            if (!resp.ok || !data.status) {
-                alert((data && data.error) || 'Не удалось создать чат. Попробуйте позже.');
+        // Отображение списка чатов
+        function displayChats(chats) {
+            if (chats.length === 0) {
+                emptyState.style.display = 'flex';
+                listSection.style.display = 'none';
                 return;
             }
-
-            const chats = readChats();
-            chats.unshift({ id: data.uuid, name: data.chat_name });
-            writeChats(chats);
-
-            closeModal();
-            render();
-        } catch (err) {
-            alert('Ошибка соединения с сервером. Убедитесь, что он запущен на 8080.');
+            
+            emptyState.style.display = 'none';
+            listSection.style.display = 'grid';
+            
+            // Очищаем список
+            listSection.innerHTML = '';
+            
+            // Добавляем чаты в список
+            chats.forEach(chat => {
+                const chatCard = document.createElement('div');
+                chatCard.className = 'chat-card';
+                chatCard.innerHTML = `
+                    <div class="avatar">${chat.name.charAt(0).toUpperCase()}</div>
+                    <div class="meta">
+                        <div class="name">${chat.name}</div>
+                        <div class="subtitle">ID: ${chat.uuid}</div>
+                    </div>
+                `;
+                
+                // Обработчик клика на чат
+                chatCard.addEventListener('click', () => {
+                    // Переход на страницу чата
+                    window.location.href = `../chat/index.html?uuid=${chat.uuid}`;
+                });
+                
+                listSection.appendChild(chatCard);
+            });
         }
-    });
 
-    // Initial render
-    render();
-</script>
+        // Загрузка списка чатов при загрузке страницы
+        document.addEventListener('DOMContentLoaded', loadChats);
+    </script>
 
 </body>
 </html>

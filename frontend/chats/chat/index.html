@@ -128,186 +128,142 @@
     </div>
 </div>
 
-<script>
-    const STORAGE_KEY = 'ggchat_chats';
-    // Добавлена константа API_BASE_URL
-    const API_BASE_URL = 'http://localhost:8080/api/v1/chats'; 
 
-    function readChats() {
-        try {
-            const raw = localStorage.getItem(STORAGE_KEY);
-            const val = JSON.parse(raw);
-            return Array.isArray(val) ? val : [];
-        } catch (_) { return []; }
-    }
-    function writeChats(chats) { 
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(chats)); 
-    }
 
-    function getParamsFromUrl() {
-        const params = new URLSearchParams(location.search);
-        return {
-            id: params.get('id'),
-            name: params.get('name') || params.get('chat_name') || null
-        };
-    }
+    <script>
+        // Получение UUID чата из URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const chatUuid = urlParams.get('uuid');
 
-    function findChatById(id) {
-        return readChats().find(c => c.id === id);
-    }
+        // Элементы DOM
+        const goBackBtn = document.getElementById('go-back');
+        const chatTitle = document.getElementById('chat-title');
+        const chatSubtitle = document.getElementById('chat-subtitle');
+        const chatIdBox = document.getElementById('chat-id-box');
+        const copyIdBtn = document.getElementById('copy-id');
+        const openSettingsBtn = document.getElementById('open-settings');
+        const closeSettingsBtn = document.getElementById('close-settings');
+        const deleteChatBtn = document.getElementById('delete-chat');
+        const modalBackdrop = document.getElementById('modal-backdrop');
 
-    function navigateToList() {
-        if (history.length > 1) { history.back(); return; }
-        location.replace('../all_chats/allchat.html');
-    }
+        // Переход к списку чатов
+        goBackBtn.addEventListener('click', () => {
+            window.location.href = '../all_chats/allchat.html';
+        });
 
-    // UI Refs
-    const titleEl = document.getElementById('chat-title');
-    const subtitleEl = document.getElementById('chat-subtitle');
-    const goHome = document.getElementById('go-home');
-    const goBack = document.getElementById('go-back');
-    const messagesEl = document.getElementById('messages');
+        // Открытие модального окна настроек
+        openSettingsBtn.addEventListener('click', () => {
+            modalBackdrop.style.display = 'flex';
+            const modal = modalBackdrop.querySelector('.modal');
+            setTimeout(() => {
+                modal.classList.add('open');
+            }, 10);
+        });
 
-    const openSettingsBtn = document.getElementById('open-settings');
-    const backdrop = document.getElementById('modal-backdrop');
-    const modal = backdrop.querySelector('.modal');
-    const closeSettingsBtn = document.getElementById('close-settings');
-    const deleteBtn = document.getElementById('delete-chat');
-    console.log('Кнопка удаления чата найдена:', deleteBtn);
-    const copyIdBtn = document.getElementById('copy-id');
-    const idBox = document.getElementById('chat-id-box');
-
-    const composerForm = document.getElementById('composer');
-    const messageInput = document.getElementById('message-input');
-
-    // State
-    const { id: chatIdFromUrl, name: chatNameFromUrl } = getParamsFromUrl();
-    let chat = chatIdFromUrl ? findChatById(chatIdFromUrl) : null;
-
-    function renderChat() {
-        // Если есть объект чата, но в URL пришло название — используем его (источник истины при навигации)
-        if (chat && chatNameFromUrl) {
-            chat = { ...chat, name: chatNameFromUrl };
-        }
-        // Пытаемся восстановить данные из URL, если локально чата нет (например, открыли по прямой ссылке)
-        if (!chat && chatIdFromUrl) {
-            chat = { id: chatIdFromUrl, name: chatNameFromUrl || 'Без названия' };
+        // Закрытие модального окна настроек
+        function closeSettingsModal() {
+            const modal = modalBackdrop.querySelector('.modal');
+            modal.classList.remove('open');
+            setTimeout(() => {
+                modalBackdrop.style.display = 'none';
+            }, 250);
         }
 
-        if (!chat) {
-            titleEl.textContent = 'Чат не найден';
-            subtitleEl.textContent = 'Похоже, этот чат был удалён или не существует';
-            messagesEl.innerHTML = '<div class="message-empty">Нет данных для отображения</div>';
-            return;
-        }
-        // Поддержка возможной старой схемы хранения { chat_name: string }
-        const displayName = (chat.name && chat.name.trim()) || (chat.chat_name && chat.chat_name.trim()) || chatNameFromUrl || 'Без названия';
-        titleEl.textContent = displayName;
-        subtitleEl.textContent = 'UUID: ' + chat.id;
-        idBox.textContent = chat.id;
+        // Закрытие модального окна по кнопке "Готово"
+        closeSettingsBtn.addEventListener('click', closeSettingsModal);
 
-        // Нормализуем хранилище: если у записи нет name, но есть chat_name — допишем name
-        if (!chat.name && chat.chat_name) {
-            const all = readChats();
-            const idx = all.findIndex(c => c.id === chat.id);
-            if (idx !== -1) {
-                all[idx] = { ...all[idx], name: all[idx].name || all[idx].chat_name };
-                writeChats(all);
-            }
-        }
-    }
-
-    function openModal() {
-        console.log('Открытие модального окна');
-        backdrop.style.display = 'flex';
-        requestAnimationFrame(() => { modal.classList.add('open'); });
-    }
-    function closeModal() {
-        modal.classList.remove('open');
-        setTimeout(() => { backdrop.style.display = 'none'; }, 200);
-    }
-
-    // Events
-    goHome.addEventListener('click', navigateToList);
-    goBack.addEventListener('click', navigateToList);
-    openSettingsBtn.addEventListener('click', openModal);
-    closeSettingsBtn.addEventListener('click', closeModal);
-    backdrop.addEventListener('click', (e) => { if (e.target === backdrop) closeModal(); });
-
-    copyIdBtn.addEventListener('click', async () => {
-        if (!chat) return;
-        try { await navigator.clipboard.writeText(chat.id); copyIdBtn.textContent = 'Скопировано'; setTimeout(() => copyIdBtn.textContent = 'Копировать', 1200); } catch (_) {}
-    });
-
-    // ИСПРАВЛЕННЫЙ БЛОК: Удаление чата
-    console.log('Добавление обработчика события для кнопки удаления чата');
-    console.log('Элемент кнопки удаления:', deleteBtn);
-    if (deleteBtn) {
-        deleteBtn.addEventListener('click', async () => {
-            console.log('Обработчик события удаления вызван');
-            if (!chat) return;
-
-            // Опционально: запрос подтверждения
-            if (!confirm('Вы уверены, что хотите удалить этот чат? Это действие необратимо.')) {
-                return;
-            }
-
-            const uuid = chat.id;
-            console.log('Попытка удаления чата с UUID:', uuid);
-            console.log('URL запроса:', `${API_BASE_URL}/delete_chat/${uuid}`);
-
-            try {
-                // 1. Отправка DELETE запроса на сервер
-                console.log('Отправка DELETE запроса на:', `${API_BASE_URL}/delete_chat/${uuid}`);
-                const resp = await fetch(`${API_BASE_URL}/delete_chat/${uuid}`, {
-                    method: 'DELETE',
-                }).catch(error => {
-                    console.error('Ошибка при отправке запроса:', error);
-                    throw error;
-                });
-                console.log('Ответ от сервера:', resp);
-                console.log('Статус ответа:', resp.status);
-                console.log('OK ответ:', resp.ok);
-                
-                if (resp.ok) {
-                    // 2. Только после подтверждения сервера: удаляем локально
-                    const items = readChats().filter(c => c.id !== chat.id);
-                    writeChats(items);
-
-                    // 3. Закрываем модальное окно и перенаправляем
-                    closeModal();
-                    navigateToList();
-                } else {
-                    // 4. Обработка ошибки сервера
-                    const errorData = await resp.json().catch(() => ({}));
-                    alert(`Не удалось удалить чат. Ошибка: ${resp.status} - ${errorData.error || 'Неизвестная ошибка.'}`);
-                }
-            } catch (err) {
-                // 5. Обработка сетевой ошибки
-                alert('Ошибка соединения с сервером при попытке удаления.');
-                console.error('Delete error:', err);
+        // Закрытие модального окна по клику на backdrop
+        modalBackdrop.addEventListener('click', (e) => {
+            if (e.target === modalBackdrop) {
+                closeSettingsModal();
             }
         });
-    } else {
-        console.error('Кнопка удаления чата не найдена в DOM');
-    }
 
-    composerForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const text = messageInput.value.trim();
-        if (!text) return;
-        // Заглушка добавления сообщения (локально, без бэка)
-        const bubble = document.createElement('div');
-        bubble.className = 'message-empty';
-        bubble.textContent = text;
-        messagesEl.appendChild(bubble);
-        messageInput.value = '';
-    });
+        // Копирование UUID чата
+        copyIdBtn.addEventListener('click', () => {
+            navigator.clipboard.writeText(chatUuid)
+                .then(() => {
+                    // Временно меняем текст кнопки
+                    const originalText = copyIdBtn.textContent;
+                    copyIdBtn.textContent = 'Скопировано!';
+                    setTimeout(() => {
+                        copyIdBtn.textContent = originalText;
+                    }, 2000);
+                })
+                .catch(err => {
+                    console.error('Ошибка при копировании UUID:', err);
+                });
+        });
 
-    // Init
-    renderChat();
-</script>
+        // Удаление чата
+        deleteChatBtn.addEventListener('click', async () => {
+            if (!confirm('Вы уверены, что хотите удалить этот чат? Это действие нельзя отменить.')) {
+                return;
+            }
+            
+            try {
+                // Отправка DELETE запроса для удаления чата
+                const response = await fetch(`http://localhost:8080/api/v1/chats/delete_chat/${chatUuid}`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    // Переход к списку чатов после успешного удаления
+                    window.location.href = '../all_chats/allchat.html';
+                } else {
+                    console.error('Ошибка при удалении чата:', response.status);
+                    alert('Ошибка при удалении чата');
+                }
+            } catch (error) {
+                console.error('Ошибка при удалении чата:', error);
+                alert('Ошибка при удалении чата');
+            }
+        });
 
+        // Загрузка информации о чате
+        async function loadChatInfo() {
+            if (!chatUuid) {
+                chatTitle.textContent = 'Ошибка';
+                chatSubtitle.textContent = 'Не указан UUID чата';
+                return;
+            }
+            
+            try {
+                // Отправка GET запроса для получения списка всех чатов
+                const response = await fetch('http://localhost:8080/api/v1/chats/all_chats');
+                
+                if (response.ok) {
+                    const chats = await response.json();
+                    // Поиск текущего чата по UUID
+                    const currentChat = chats.find(chat => chat.uuid === chatUuid);
+                    
+                    if (currentChat) {
+                        // Отображение информации о чате
+                        chatTitle.textContent = currentChat.name;
+                        chatSubtitle.textContent = `Чат создан`;
+                        chatIdBox.textContent = currentChat.uuid;
+                    } else {
+                        chatTitle.textContent = 'Чат не найден';
+                        chatSubtitle.textContent = 'Чат с таким UUID не существует';
+                        chatIdBox.textContent = chatUuid;
+                    }
+                } else {
+                    console.error('Ошибка при загрузке информации о чате:', response.status);
+                    chatTitle.textContent = 'Ошибка загрузки';
+                    chatSubtitle.textContent = 'Не удалось загрузить информацию о чате';
+                    chatIdBox.textContent = chatUuid;
+                }
+            } catch (error) {
+                console.error('Ошибка при загрузке информации о чате:', error);
+                chatTitle.textContent = 'Ошибка загрузки';
+                chatSubtitle.textContent = 'Не удалось загрузить информацию о чате';
+                chatIdBox.textContent = chatUuid;
+            }
+        }
+
+        // Загрузка информации о чате при загрузке страницы
+        document.addEventListener('DOMContentLoaded', loadChatInfo);
+    </script>
 </body>
 </html>
 

@@ -68,10 +68,7 @@ func (a *ApiChats) NewChat(w http.ResponseWriter, r *http.Request) {
 func (a *ApiChats) DeleteChat(w http.ResponseWriter, r *http.Request) {
 	log := logrus.New()
 	log.Info("Пришел запрос на удаление чата...")
-	log.Info("Метод запроса: ", r.Method)
-	log.Info("URL запроса: ", r.URL.Path)
 	uuidStr := chi.URLParam(r, "uuid")
-	log.Info("UUID из запроса: ", uuidStr)
 	uuid, err := uuid.Parse(uuidStr)
 	if err != nil {
 		log.Warn("Ошибка парсинга uuid: ", err)
@@ -96,4 +93,27 @@ func (a *ApiChats) DeleteChat(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Info("Чат успешно удален")
+}
+
+func (a *ApiChats) GetAllChats(w http.ResponseWriter, r *http.Request) {
+	log := logrus.New()
+	log.Info("Обновляем информацию о чатах...")
+
+	ctx := context.Background()
+
+	response, err := a.repo.GetAllChats(ctx)
+	if err != nil {
+		log.Warn("Ошибка в запросе к БД: ", err)
+		http.Error(w, "Error request database", http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if err = json.NewEncoder(w).Encode(response); err != nil {
+		log.Warn("Ошибка сервера: ", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	log.Info("Информация о чатах обновлена.")
 }
