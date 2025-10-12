@@ -130,6 +130,8 @@
 
 <script>
     const STORAGE_KEY = 'ggchat_chats';
+    // Добавлена константа API_BASE_URL
+    const API_BASE_URL = 'http://localhost:8080/api/v1/chats'; 
 
     function readChats() {
         try {
@@ -156,7 +158,7 @@
 
     function navigateToList() {
         if (history.length > 1) { history.back(); return; }
-        location.replace('/home/ubuntu/CursorProjects/GGChat/frontend/chats/all_chats/allchat.html');
+        location.replace('../all_chats/allchat.html');
     }
 
     // UI Refs
@@ -171,6 +173,7 @@
     const modal = backdrop.querySelector('.modal');
     const closeSettingsBtn = document.getElementById('close-settings');
     const deleteBtn = document.getElementById('delete-chat');
+    console.log('Кнопка удаления чата найдена:', deleteBtn);
     const copyIdBtn = document.getElementById('copy-id');
     const idBox = document.getElementById('chat-id-box');
 
@@ -215,6 +218,7 @@
     }
 
     function openModal() {
+        console.log('Открытие модального окна');
         backdrop.style.display = 'flex';
         requestAnimationFrame(() => { modal.classList.add('open'); });
     }
@@ -235,13 +239,58 @@
         try { await navigator.clipboard.writeText(chat.id); copyIdBtn.textContent = 'Скопировано'; setTimeout(() => copyIdBtn.textContent = 'Копировать', 1200); } catch (_) {}
     });
 
-    deleteBtn.addEventListener('click', () => {
-        if (!chat) return;
-        const items = readChats().filter(c => c.id !== chat.id);
-        writeChats(items);
-        closeModal();
-        navigateToList();
-    });
+    // ИСПРАВЛЕННЫЙ БЛОК: Удаление чата
+    console.log('Добавление обработчика события для кнопки удаления чата');
+    console.log('Элемент кнопки удаления:', deleteBtn);
+    if (deleteBtn) {
+        deleteBtn.addEventListener('click', async () => {
+            console.log('Обработчик события удаления вызван');
+            if (!chat) return;
+
+            // Опционально: запрос подтверждения
+            if (!confirm('Вы уверены, что хотите удалить этот чат? Это действие необратимо.')) {
+                return;
+            }
+
+            const uuid = chat.id;
+            console.log('Попытка удаления чата с UUID:', uuid);
+            console.log('URL запроса:', `${API_BASE_URL}/delete_chat/${uuid}`);
+
+            try {
+                // 1. Отправка DELETE запроса на сервер
+                console.log('Отправка DELETE запроса на:', `${API_BASE_URL}/delete_chat/${uuid}`);
+                const resp = await fetch(`${API_BASE_URL}/delete_chat/${uuid}`, {
+                    method: 'DELETE',
+                }).catch(error => {
+                    console.error('Ошибка при отправке запроса:', error);
+                    throw error;
+                });
+                console.log('Ответ от сервера:', resp);
+                console.log('Статус ответа:', resp.status);
+                console.log('OK ответ:', resp.ok);
+                
+                if (resp.ok) {
+                    // 2. Только после подтверждения сервера: удаляем локально
+                    const items = readChats().filter(c => c.id !== chat.id);
+                    writeChats(items);
+
+                    // 3. Закрываем модальное окно и перенаправляем
+                    closeModal();
+                    navigateToList();
+                } else {
+                    // 4. Обработка ошибки сервера
+                    const errorData = await resp.json().catch(() => ({}));
+                    alert(`Не удалось удалить чат. Ошибка: ${resp.status} - ${errorData.error || 'Неизвестная ошибка.'}`);
+                }
+            } catch (err) {
+                // 5. Обработка сетевой ошибки
+                alert('Ошибка соединения с сервером при попытке удаления.');
+                console.error('Delete error:', err);
+            }
+        });
+    } else {
+        console.error('Кнопка удаления чата не найдена в DOM');
+    }
 
     composerForm.addEventListener('submit', (e) => {
         e.preventDefault();

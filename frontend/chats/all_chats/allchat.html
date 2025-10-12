@@ -178,7 +178,7 @@
                 const id = card.getAttribute('data-id');
                 const name = card.querySelector('.name')?.textContent || '';
                 // Переход на страницу чата с UUID и названием (фоллбек, если нет localStorage)
-                window.location.href = '/home/ubuntu/CursorProjects/GGChat/frontend/chats/chat/index.html?id=' + encodeURIComponent(id) + '&name=' + encodeURIComponent(name);
+                window.location.href = '../chat/index.html?id=' + encodeURIComponent(id) + '&name=' + encodeURIComponent(name);
             });
         });
     }

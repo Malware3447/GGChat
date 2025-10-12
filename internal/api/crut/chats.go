@@ -68,7 +68,10 @@ func (a *ApiChats) NewChat(w http.ResponseWriter, r *http.Request) {
 func (a *ApiChats) DeleteChat(w http.ResponseWriter, r *http.Request) {
 	log := logrus.New()
 	log.Info("Пришел запрос на удаление чата...")
+	log.Info("Метод запроса: ", r.Method)
+	log.Info("URL запроса: ", r.URL.Path)
 	uuidStr := chi.URLParam(r, "uuid")
+	log.Info("UUID из запроса: ", uuidStr)
 	uuid, err := uuid.Parse(uuidStr)
 	if err != nil {
 		log.Warn("Ошибка парсинга uuid: ", err)
@@ -84,8 +87,8 @@ func (a *ApiChats) DeleteChat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Typee", "application-json")
-	w.WriteHeader(http.StatusCreated)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
 	if err = json.NewEncoder(w).Encode(nil); err != nil {
 		log.Warn("Ошибка сервера: ", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
