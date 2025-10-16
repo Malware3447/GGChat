@@ -53,8 +53,9 @@
 
         /* Modal */
         .modal-backdrop { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.35); display: none; align-items: center; justify-content: center; z-index: 40; }
+        .modal-backdrop.open { display: flex; }
         .modal { width: 100%; max-width: 420px; background: #fff; border-radius: 16px; box-shadow: var(--shadow-light); padding: 22px; transform: translateY(10px); opacity: 0; transition: opacity var(--transition-speed), transform var(--transition-speed); }
-        .modal.open { transform: translateY(0); opacity: 1; }
+        .modal-backdrop.open .modal { transform: translateY(0); opacity: 1; }
         .modal-title { font-weight: 700; font-size: 18px; margin-bottom: 14px; }
         .input-group { margin-bottom: 16px; position: relative; }
         .input-group label { position: absolute; top: 14px; left: 14px; color: #94A3B8; transition: 0.2s ease-out; pointer-events: none; }
@@ -137,19 +138,13 @@
 
         // Открытие модального окна создания чата
         openCreateBtn.addEventListener('click', () => {
-            modalBackdrop.style.display = 'flex';
-            setTimeout(() => {
-                modalBackdrop.classList.add('open');
-            }, 10);
+            modalBackdrop.classList.add('open');
             chatNameInput.focus();
         });
 
         // Закрытие модального окна создания чата
         function closeCreateModal() {
             modalBackdrop.classList.remove('open');
-            setTimeout(() => {
-                modalBackdrop.style.display = 'none';
-            }, 250);
             createForm.reset();
         }
 
