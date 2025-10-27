@@ -148,7 +148,11 @@
 
         // Переход к списку чатов
         goBackBtn.addEventListener('click', () => {
-            window.location.href = '../all_chats/allchat.html';
+            if (typeof router !== 'undefined') {
+                router.navigate('/chats');
+            } else {
+                window.location.href = '../all_chats/allchat.html';
+            }
         });
 
         // Открытие модального окна настроек
@@ -203,13 +207,18 @@
             
             try {
                 // Отправка DELETE запроса для удаления чата
-                const response = await fetch(`http://localhost:8080/api/v1/chats/delete_chat/${chatUuid}`, {
-                    method: 'DELETE'
+                const response = await fetch(`/api/v1/chats/delete_chat/${chatUuid}`, {
+                    method: 'DELETE',
+                    credentials: 'include' // Включаем cookie в запрос
                 });
                 
                 if (response.ok) {
                     // Переход к списку чатов после успешного удаления
-                    window.location.href = '../all_chats/allchat.html';
+                    if (typeof router !== 'undefined') {
+                        router.navigate('/chats');
+                    } else {
+                        window.location.href = '../all_chats/allchat.html';
+                    }
                 } else {
                     console.error('Ошибка при удалении чата:', response.status);
                     alert('Ошибка при удалении чата');
@@ -230,7 +239,9 @@
             
             try {
                 // Отправка GET запроса для получения списка всех чатов
-                const response = await fetch('http://localhost:8080/api/v1/chats/all_chats');
+                const response = await fetch('/api/v1/chats/all_chats', {
+                    credentials: 'include' // Включаем cookie в запрос
+                });
                 
                 if (response.ok) {
                     const chats = await response.json();

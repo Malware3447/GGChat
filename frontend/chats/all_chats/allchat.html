@@ -167,13 +167,25 @@
             
             try {
                 // Отправка POST запроса для создания чата
-                const response = await fetch('http://localhost:8080/api/v1/chats/new_chat', {
+                const response = await fetch('/api/v1/chats/new_chat', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
+                    credentials: 'include', // Включаем cookie в запрос
                     body: JSON.stringify({ chat_name: chatName })
                 });
+                
+                // Обработка ошибки аутентификации
+                if (response.status === 401) {
+                    // Перенаправляем пользователя на страницу входа
+                    if (typeof router !== 'undefined') {
+                        router.navigate('/');
+                    } else {
+                        window.location.href = '../../autentifications/index.html';
+                    }
+                    return;
+                }
                 
                 if (response.ok) {
                     // Закрываем модальное окно
@@ -192,11 +204,30 @@
         // Загрузка списка чатов
         async function loadChats() {
             try {
-                const response = await fetch('http://localhost:8080/api/v1/chats/all_chats');
+                const response = await fetch('/api/v1/chats/all_chats', {
+                    credentials: 'include'
+                });
+                
+                // Обработка ошибки аутентификации
+                if (response.status === 401) {
+                    // Перенаправляем пользователя на страницу входа
+                    
+                    //временно закоментрированно
+                    //window.location.href = '../../autentifications/index.html';
+                    return;
+                }
                 
                 if (response.ok) {
-                    const chats = await response.json();
-                    displayChats(chats);
+                    const data = await response.json();
+                    // Проверяем структуру ответа
+                    if (data && Array.isArray(data)) {
+                        displayChats(data);
+                    } else if (data && data.chats && Array.isArray(data.chats)) {
+                        displayChats(data.chats);
+                    } else {
+                        console.error('Неожиданный формат данных:', data);
+                        displayChats([]);
+                    }
                 } else {
                     console.error('Ошибка при загрузке чатов:', response.status);
                     displayChats([]); // Отображаем пустой список в случае ошибки
@@ -236,7 +267,11 @@
                 // Обработчик клика на чат
                 chatCard.addEventListener('click', () => {
                     // Переход на страницу чата
-                    window.location.href = `../chat/index.html?uuid=${chat.uuid}`;
+                    if (typeof router !== 'undefined') {
+                        router.navigate(`/chat/${chat.uuid}`);
+                    } else {
+                        window.location.href = `../chat/index.html?uuid=${chat.uuid}`;
+                    }
                 });
                 
                 listSection.appendChild(chatCard);
@@ -244,9 +279,21 @@
         }
 
         // Загрузка списка чатов при загрузке страницы
-        document.addEventListener('DOMContentLoaded', loadChats);
+        document.addEventListener('DOMContentLoaded', () => {
+            // Вывод cookies из localStorage в консоль
+            const authCookies = localStorage.getItem('authCookies');
+            if (authCookies) {
+                console.log('Auth cookies from localStorage:', JSON.parse(authCookies));
+            } else {
+                console.log('No auth cookies found in localStorage');
+            }
+            
+            // Загрузка списка чатов
+            loadChats();
+        });
     </script>
 
 </body>
 </html>
+
 

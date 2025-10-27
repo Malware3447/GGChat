@@ -24,14 +24,14 @@ func (ds *DbService) NewUser(ctx context.Context, username, password string) (bo
 	return ds.repo.NewUser(ctx, username, password)
 }
 
-func (ds *DbService) NewChat(ctx context.Context, chatName string) (bool, uuid.UUID, error) {
-	return ds.repo.NewChat(ctx, chatName)
+func (ds *DbService) NewChat(ctx context.Context, chatName string, UserId int) (bool, uuid.UUID, error) {
+	return ds.repo.NewChat(ctx, chatName, UserId)
 }
 
 func (ds *DbService) DeleteChat(ctx context.Context, uuid uuid.UUID) error {
 	return ds.repo.DeleteChat(ctx, uuid)
 }
 
-func (ds *DbService) GetAllChats(ctx context.Context) ([]chats.Chat, error) {
-	return ds.repo.GetAllChats(ctx)
+func (ds *DbService) GetAllChats(ctx context.Context, UserId int) ([]chats.Chat, error) {
+	return ds.repo.GetAllChats(ctx, UserId)
 }

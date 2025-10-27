@@ -34,9 +34,16 @@ func (a *ApiChats) NewChat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	userId, ok := r.Context().Value("user_id").(int)
+	if !ok {
+		log.Warn("Ошибка получения ID пользователя из контекста")
+		http.Error(w, "Error get chats", http.StatusBadRequest)
+		return
+	}
+
 	ctx := context.Background()
 
-	confirmation, uuid, err := a.repo.NewChat(ctx, body.ChatName)
+	confirmation, uuid, err := a.repo.NewChat(ctx, body.ChatName, userId)
 	if err != nil {
 		log.Warn("Ошибка создания нового чата: ", err)
 		http.Error(w, "Error creat new chat", http.StatusBadRequest)
@@ -97,11 +104,19 @@ func (a *ApiChats) DeleteChat(w http.ResponseWriter, r *http.Request) {
 
 func (a *ApiChats) GetAllChats(w http.ResponseWriter, r *http.Request) {
 	log := logrus.New()
-	log.Info("Обновляем информацию о чатах...")
+
+	userId, ok := r.Context().Value("user_id").(int)
+	if !ok {
+		log.Warn("Ошибка получения ID пользователя из контекста")
+		http.Error(w, "Error get chats", http.StatusBadRequest)
+		return
+	}
+
+	log.Info("Запрос списка чатов от пользователя №", userId, "...")
 
 	ctx := context.Background()
 
-	response, err := a.repo.GetAllChats(ctx)
+	response, err := a.repo.GetAllChats(ctx, userId)
 	if err != nil {
 		log.Warn("Ошибка в запросе к БД: ", err)
 		http.Error(w, "Error request database", http.StatusBadRequest)

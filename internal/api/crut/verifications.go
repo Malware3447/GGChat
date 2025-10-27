@@ -1,23 +1,27 @@
 package crut
 
 import (
+	"GGChat/internal/interfaces"
 	modelV "GGChat/internal/models/crut/verifications"
 	"GGChat/internal/service/db"
 	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/sirupsen/logrus"
 )
 
 type ApiVerifications struct {
 	repo *db.DbService
+	jwt  interfaces.JwtInterface
 }
 
-func NewCrut(repo *db.DbService) *ApiVerifications {
+func NewCrut(repo *db.DbService, jwt interfaces.JwtInterface) *ApiVerifications {
 	return &ApiVerifications{
 		repo: repo,
+		jwt:  jwt,
 	}
 }
 
@@ -41,6 +45,30 @@ func (v *ApiVerifications) UsersVerifications(w http.ResponseWriter, r *http.Req
 		return
 	}
 
+	token, err := v.jwt.NewToken(id)
+	if err != nil {
+		log.Warn("Ошибка создания токена: ", err)
+		http.Error(w, "Error created user token", http.StatusBadRequest)
+		return
+	}
+
+	log.Info("Token: ", token)
+
+	cookie := http.Cookie{
+		Name:     "UserToken",
+		Value:    token,
+		Expires:  time.Now().Add(100 * time.Hour),
+		HttpOnly: false,
+		Secure:   false,
+		SameSite: http.SameSiteLaxMode,
+		Path:     "/",
+	}
+
+	http.SetCookie(w, &cookie)
+
+	// Отладочный вывод
+	log.Info("Setting cookie: ", cookie)
+
 	if confirmation == true {
 		response := modelV.Response{
 			Id:           id,
@@ -48,7 +76,7 @@ func (v *ApiVerifications) UsersVerifications(w http.ResponseWriter, r *http.Req
 		}
 
 		w.Header().Set("Content-Type", "application-json")
-		w.WriteHeader(http.StatusCreated)
+		w.WriteHeader(http.StatusOK)
 		if err = json.NewEncoder(w).Encode(response); err != nil {
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return

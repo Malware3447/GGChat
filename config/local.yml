@@ -16,3 +16,6 @@ postgres:
   maxAttempts: 5
   attemptDelay: 5s
   migrationPath: migrations/pg
+
+jwt:
+  secret_token: "t7tL2p*F8h!Z@eC4y$B6k^Q1mV9s#X0r&T5w)U3a(J7i)O$R2s%A9p^D3f&G0j!H1k@L5m#N6q*V8b"
