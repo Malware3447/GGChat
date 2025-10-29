@@ -52,7 +52,6 @@ func (a *Api) Init() {
 			w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
 			w.Header().Set("Access-Control-Allow-Credentials", "true")
 
-			// Добавляем отладочный вывод
 			logrus.Info("Request URL: ", r.URL.Path)
 			logrus.Info("Request Origin: ", clientOrigin)
 			logrus.Info("Request Headers: ", r.Header)
@@ -62,7 +61,6 @@ func (a *Api) Init() {
 				return
 			}
 
-			// Создаем обертку для ResponseWriter, чтобы перехватить заголовки ответа
 			wrapped := &responseWrapper{ResponseWriter: w, statusCode: http.StatusOK}
 			next.ServeHTTP(wrapped, r)
 
@@ -85,7 +83,6 @@ func (a *Api) Init() {
 	})
 }
 
-// GetRouter возвращает маршрутизатор API
 func (a *Api) GetRouter() http.Handler {
 	return a.router
 }

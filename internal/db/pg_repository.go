@@ -161,49 +161,30 @@ func (repo *RepositoryPg) DeleteChat(ctx context.Context, uuid uuid.UUID) error 
 
 func (repo *RepositoryPg) GetAllChats(ctx context.Context, UserId int) ([]chats.Chat, error) {
 	const p = `
-		SELECT chat_id FROM chat_nembers
-		WHERE user_id = $1
+		SELECT cn.chat_id, c.name
+		FROM chat_nembers cn
+		JOIN chats c ON cn.chat_id = c.uuid
+		WHERE cn.user_id = $1
 	`
 
 	rows, err := repo.db.Query(ctx, p, UserId)
 	if err != nil {
-		return nil, fmt.Errorf("не удалось получить список uuid чатов пользователя: %w", err)
+		return nil, fmt.Errorf("не удалось получить список чатов пользователя: %w", err)
 	}
 	defer rows.Close()
 
 	var Chats []chats.Chat
 	for rows.Next() {
-		var chatId chats.Chat
-		err := rows.Scan(&chatId.Uuid)
+		var chat chats.Chat
+		err := rows.Scan(&chat.Uuid, &chat.Name)
 		if err != nil {
 			return nil, fmt.Errorf("ошибка при сканировании данных: %w", err)
 		}
-		Chats = append(Chats, chatId)
+		Chats = append(Chats, chat)
 	}
 
-	const q = `
-		SELECT name FROM chats
-		WHERE uuid = $1
-	`
-	for i := range Chats {
-		rows, err = repo.db.Query(ctx, q, Chats[i].Uuid)
-		if err != nil {
-			return nil, fmt.Errorf("не удалось получить список чатов: %w", err)
-		}
-		defer rows.Close()
-
-		for rows.Next() {
-			var chat chats.Chat
-			err := rows.Scan(&chat.Name)
-			if err != nil {
-				return nil, fmt.Errorf("ошибка при сканировании данных чата: %w", err)
-			}
-			Chats = append(Chats, chat)
-		}
-
-		if err := rows.Err(); err != nil {
-			return nil, fmt.Errorf("ошибка при итерации по результатам: %w", err)
-		}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("ошибка при итерации по результатам: %w", err)
 	}
 
 	return Chats, nil

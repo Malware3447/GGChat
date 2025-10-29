@@ -5,11 +5,6 @@ tasks:
     cmds:
       - go run ./cmd/server/main.go -config=./config/local.yml
   
-  frontend:
-    desc: Запуск фронтенд-сервера
-    cmds:
-      - go run ./cmd/server/main.go -config=./config/local.yml
-  
   migrate:run:
     desc: Запуск миграций
     cmds:
