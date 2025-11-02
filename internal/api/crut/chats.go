@@ -43,7 +43,14 @@ func (a *ApiChats) NewChat(w http.ResponseWriter, r *http.Request) {
 
 	ctx := context.Background()
 
-	confirmation, uuid, err := a.repo.NewChat(ctx, body.ChatName, userId)
+	other_user_id, err := a.repo.GetUser(ctx, body.UserName)
+	if err != nil {
+		log.Warn("Пользователь не найден. Ошибка: ", err)
+		http.Error(w, "Error creat new chat", http.StatusBadRequest)
+		return
+	}
+
+	confirmation, uuid, err := a.repo.NewChat(ctx, body.ChatName, userId, other_user_id)
 	if err != nil {
 		log.Warn("Ошибка создания нового чата: ", err)
 		http.Error(w, "Error creat new chat", http.StatusBadRequest)
@@ -131,4 +138,80 @@ func (a *ApiChats) GetAllChats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	log.Info("Информация о чатах обновлена.")
+}
+
+func (a *ApiChats) NewMessage(w http.ResponseWriter, r *http.Request) {
+	log := logrus.New()
+
+	userId, ok := r.Context().Value("user_id").(int)
+	if !ok {
+		log.Warn("Ошибка получения ID пользователя из контекста")
+		http.Error(w, "Error get chats", http.StatusBadRequest)
+		return
+	}
+
+	body := chats.NewMessageRequest{}
+	err := json.NewDecoder(r.Body).Decode(&body)
+	if err != nil {
+		log.Warn("Неверное тело запроса.")
+		http.Error(w, "Invflid body request", http.StatusBadRequest)
+		return
+	}
+
+	log.Info("Запрос на отправку нового сообщения...")
+
+	ctx := context.Background()
+
+	err = a.repo.NewMessage(ctx, body.ChatId, userId, body.Content)
+	if err != nil {
+		log.Warn("ошибка добавления сообщения в бд: ", err)
+		http.Error(w, "Error adding message in database", http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if err = json.NewEncoder(w).Encode(nil); err != nil {
+		log.Warn("Ошибка сервера: ", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	log.Info("Сообщение добавлено")
+}
+
+func (a *ApiChats) GetMessage(w http.ResponseWriter, r *http.Request) {
+	log := logrus.New()
+
+	_, ok := r.Context().Value("user_id").(int)
+	if !ok {
+		log.Warn("Ошибка получения ID пользователя из контекста")
+		http.Error(w, "Error get chats", http.StatusBadRequest)
+		return
+	}
+
+	ChatIdStr := chi.URLParam(r, "chat_id")
+	ChatId, err := uuid.Parse(ChatIdStr)
+	if err != nil {
+		log.Warn("Ошибка парсинга UUID: ", err)
+		http.Error(w, "Error parsing UUID", http.StatusBadRequest)
+		return
+	}
+
+	ctx := context.Background()
+
+	response, err := a.repo.GetMessage(ctx, ChatId)
+	if err != nil {
+		log.Warn("ошибка получения списка сообщений: ", err)
+		http.Error(w, "error get list message", http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if err = json.NewEncoder(w).Encode(response); err != nil {
+		log.Warn("Ошибка сервера: ", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 }

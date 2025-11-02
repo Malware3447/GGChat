@@ -3,276 +3,243 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GGChat — Вход и Регистрация</title>
+    <title>Qattro — Вход и Регистрация</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
 
     <style>
-        /* CSS-Переменные */
+        /* CSS-Переменные (Тема Qattro) */
         :root {
-            --primary-color: #007AFF;
-            --primary-hover: #005BBF;
-            --background-light: #F9FAFB;
+            --primary-color: #1E453E; /* Темно-зеленый */
+            --primary-hover: #15322C; /* Темнее зеленый */
+            --background-light: #F7F7F7; /* Очень светлый фон */
             --text-dark: #1E293B;
             --shadow-light: 0 10px 30px rgba(0, 0, 0, 0.08);
             --border-radius-large: 16px;
-            --transition-speed: 0.4s; /* Скорость анимации для форм */
-            --liquid-duration: 1.0s; /* Скорость анимации для волны */
+            --transition-speed: 0.3s;
         }
 
         /* Базовые стили */
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Inter', sans-serif; background-color: var(--background-light); color: var(--text-dark); line-height: 1.6; }
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: var(--background-light); 
+            color: var(--text-dark); 
+            line-height: 1.6; 
+            /* Центрирование формы */
+            display: grid;
+            place-items: center;
+            min-height: 100vh;
+        }
         a { text-decoration: none; color: var(--primary-color); }
 
-        /* Шапка */
-        .header { display: flex; justify-content: space-between; align-items: center; padding: 20px 5%; }
-        .logo { font-size: 24px; font-weight: 800; color: var(--primary-color); }
-        .login-btn { padding: 8px 16px; border: 1px solid var(--primary-color); color: var(--primary-color); border-radius: 8px; font-weight: 600; transition: all 0.3s; cursor: pointer; }
-        .login-btn:hover { background-color: var(--primary-color); color: white; }
-
-        /* Секция Hero/Регистрация */
-        .hero-section { display: flex; justify-content: center; align-items: center; min-height: calc(100vh - 80px); padding: 40px 5%; gap: 60px; }
-        .hero-text { max-width: 450px; }
-        .hero-text h1 { font-size: 48px; font-weight: 800; margin-bottom: 20px; line-height: 1.1; }
-        .hero-text p { font-size: 18px; color: #64748B; }
-
-        /* Контейнер для смены форм - ВАЖНО: position: relative и overflow: hidden */
+        /* Контейнер формы */
         .form-container {
-            position: relative;
-            height: 480px;
-            max-width: 400px;
+            max-width: 420px;
             width: 100%;
-            overflow: hidden;
+            background-color: white;
+            padding: 40px;
             border-radius: var(--border-radius-large);
             box-shadow: var(--shadow-light);
         }
 
-        /* Стиль карточки (общий) */
-        .card {
-            position: absolute;
-            top: 0;
-            left: 0;
-            background-color: white;
-            padding: 40px;
-            border-radius: var(--border-radius-large);
-            width: 100%;
-            transition: opacity var(--transition-speed), transform var(--transition-speed);
+        /* Логотип Qattro */
+        .logo {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 24px;
         }
-
-        .card h2 {
+        .logo-icon {
+            width: 50px;
+            height: 50px;
+            background: var(--primary-color);
+            color: white;
+            border-radius: 12px;
+            display: grid;
+            place-items: center;
+            font-size: 24px;
+            font-weight: 800;
+        }
+        .logo-text {
             font-size: 28px;
-            font-weight: 600;
+            font-weight: 800;
+            color: #000;
+        }
+        .logo-subtitle {
+            font-size: 15px;
+            color: #64748B;
+            margin-top: -10px;
+        }
+
+        /* Вкладки */
+        .tabs {
+            display: flex;
+            background: #F1F5F9;
+            border-radius: 10px;
+            padding: 5px;
             margin-bottom: 25px;
-            text-align: center;
+        }
+        .tab-btn {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            background: transparent;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #64748B;
+            cursor: pointer;
+            transition: all var(--transition-speed);
+        }
+        .tab-btn.active {
+            background: #FFFFFF;
+            color: var(--text-dark);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
         }
 
-        /* Классы для анимации */
-        .hidden {
-            opacity: 0;
-            transform: scale(0.95);
-            pointer-events: none;
+        /* Карточки форм */
+        .card {
+            display: none;
         }
-        .visible {
-            opacity: 1;
-            transform: scale(1);
+        .card.visible {
+            display: block;
         }
 
-        /* ------------------------------------- */
-        /* ЛОКАЛЬНЫЙ ОВЕРЛЕЙ ДЛЯ ПЕРЕХОДА */
-        /* ------------------------------------- */
-        .local-transition-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 10;
-            pointer-events: none;
-            opacity: 0;
-
-            /* Настройки для "жидкого параболического" эффекта:
-               clip-path и opacity будут контролироваться JavaScript
-            */
-            transition: clip-path var(--liquid-duration) cubic-bezier(0.8, 0, 0.2, 1), opacity 0.1s;
-        }
-
-        /* Стили полей ввода и кнопок (без изменений) */
+        /* Стили полей ввода */
         .input-group { margin-bottom: 20px; position: relative; }
-        .input-group label { position: absolute; top: 15px; left: 15px; color: #94A3B8; transition: 0.2s ease-out; pointer-events: none; }
-        .input-group input:focus ~ label, .input-group input:not(:placeholder-shown) ~ label { top: -10px; left: 10px; font-size: 12px; background-color: white; padding: 0 5px; color: var(--primary-color); }
-        .input-group input { width: 100%; padding: 15px; border: 1px solid #E2E8F0; border-radius: 10px; font-size: 16px; transition: border-color 0.3s; color: transparent; }
-        .input-group input:focus { outline: none; border-color: var(--primary-color); color: var(--text-dark); }
-        .input-group input:not(:placeholder-shown) { color: var(--text-dark); }
-        .cta-button { width: 100%; background-color: var(--primary-color); color: white; border: none; padding: 15px 25px; border-radius: 10px; font-weight: 600; cursor: pointer; font-size: 18px; transition: background-color 0.3s, transform 0.2s, opacity 0.3s; margin-top: 10px; }
+        .input-group label { 
+            position: absolute; 
+            top: 15px; 
+            left: 15px; 
+            color: #94A3B8; 
+            transition: 0.2s ease-out; 
+            pointer-events: none;
+            font-size: 16px;
+        }
+        /* Адаптация плавающего лейбла из-за placeholder=" " */
+        .input-group input:focus ~ label, 
+        .input-group input:not(:placeholder-shown) ~ label { 
+            top: -10px; 
+            left: 10px; 
+            font-size: 12px; 
+            background-color: white; 
+            padding: 0 5px; 
+            color: var(--primary-color); 
+        }
+        .input-group input { 
+            width: 100%; 
+            padding: 15px; 
+            border: 1px solid #E2E8F0; 
+            border-radius: 10px; 
+            font-size: 16px; 
+            transition: border-color 0.3s;
+        }
+        .input-group input:focus { 
+            outline: none; 
+            border-color: var(--primary-color); 
+        }
+
+        /* Кнопка */
+        .cta-button { 
+            width: 100%; 
+            background-color: var(--primary-color); 
+            color: white; 
+            border: none; 
+            padding: 15px 25px; 
+            border-radius: 10px; 
+            font-weight: 600; 
+            cursor: pointer; 
+            font-size: 18px; 
+            transition: background-color 0.3s, transform 0.2s, opacity 0.3s; 
+            margin-top: 10px; 
+        }
         .cta-button:hover:not(:disabled) { background-color: var(--primary-hover); transform: translateY(-1px); }
         .cta-button:disabled { cursor: not-allowed; opacity: 0.7; }
-        .link-text { text-align: center; margin-top: 20px; font-size: 14px; }
 
-        /* Адаптивность (без изменений) */
-        @media (max-width: 800px) {
-            .hero-section { flex-direction: column; text-align: center; min-height: auto; padding-top: 80px; }
-            .hero-text { max-width: 100%; }
-            .hero-text h1 { font-size: 36px; }
-            .form-container { margin-top: 40px; }
-        }
     </style>
 </head>
 <body>
 
-<header class="header">
-    <div class="logo">GGChat</div>
-    <a href="#" id="show-login-header" class="login-btn">Войти</a>
-</header>
+<main class="form-container">
 
-<section class="hero-section">
-
-    <div class="hero-text">
-        <h1 id="main-heading">GGChat. <br>Общайтесь проще.</h1>
-        <p>Мгновенные сообщения, групповые чаты и идеальная конфиденциальность. Регистрация занимает всего минуту!</p>
+    <div class="logo">
+        <div class="logo-icon">Q</div>
+        <div class="logo-text">Qattro</div>
+        <div class="logo-subtitle">Профессиональный мессенджер для юристов</div>
     </div>
 
-    <div class="form-container">
-
-        <div id="local-transition-overlay" class="local-transition-overlay"></div>
-
-        <div id="register-card" class="card visible">
-            <h2>Создайте свой аккаунт</h2>
-
-            <form action="#" method="POST">
-                <div class="input-group">
-                    <input type="text" id="reg-username" name="username" placeholder=" " required>
-                    <label for="reg-username">Имя пользователя (никнейм)</label>
-                </div>
-                <div class="input-group">
-                    <input type="password" id="reg-password" name="password" placeholder=" " required>
-                    <label for="reg-password">Пароль</label>
-                </div>
-                <div class="input-group">
-                    <input type="password" id="reg-confirm-password" name="confirm-password" placeholder=" " required>
-                    <label for="reg-confirm-password">Повторите пароль</label>
-                </div>
-
-                <button type="submit" class="cta-button">
-                    Зарегистрироваться
-                </button>
-            </form>
-
-            <div class="link-text">
-                Уже есть аккаунт? <a href="#" id="link-to-login">Войти</a>
-            </div>
-        </div>
-
-        <div id="login-card" class="card hidden">
-            <h2>Вход в аккаунт</h2>
-
-            <form action="#" method="POST">
-                <div class="input-group">
-                    <input type="text" id="log-username" name="username" placeholder=" " required>
-                    <label for="log-username">Имя пользователя (никнейм)</label>
-                </div>
-                <div class="input-group">
-                    <input type="password" id="log-password" name="password" placeholder=" " required>
-                    <label for="log-password">Пароль</label>
-                </div>
-
-                <button type="submit" class="cta-button">
-                    Войти в GGChat
-                </button>
-            </form>
-
-            <div class="link-text">
-                Нет аккаунта? <a href="#" id="link-to-register">Зарегистрироваться</a>
-            </div>
-        </div>
-
+    <div class="tabs">
+        <button id="show-login" class="tab-btn active">Вход</button>
+        <button id="show-register" class="tab-btn">Регистрация</button>
     </div>
-</section>
 
-<footer class="footer"></footer>
+    <div id="register-card" class="card">
+        <form action="#" method="POST">
+            <div class="input-group">
+                <input type="text" id="reg-username" name="username" placeholder=" " required>
+                <label for="reg-username">Email</label>
+            </div>
+            <div class="input-group">
+                <input type="password" id="reg-password" name="password" placeholder=" " required>
+                <label for="reg-password">Пароль</label>
+            </div>
+            <div class="input-group">
+                <input type="password" id="reg-confirm-password" name="confirm-password" placeholder=" " required>
+                <label for="reg-confirm-password">Повторите пароль</label>
+            </div>
+            <button type="submit" class="cta-button">
+                Зарегистрироваться
+            </button>
+        </form>
+    </div>
+
+    <div id="login-card" class="card visible">
+        <form action="#" method="POST">
+            <div class="input-group">
+                <input type="text" id="log-username" name="username" placeholder=" " required>
+                <label for="log-username">Email</label>
+            </div>
+            <div class="input-group">
+                <input type="password" id="log-password" name="password" placeholder=" " required>
+                <label for="log-password">Пароль</label>
+            </div>
+            <button type="submit" class="cta-button">
+                Войти
+            </button>
+        </form>
+    </div>
+
+</main>
+
 
 <script>
-    const registerCard = document.getElementById('register-card');
+    // Логика переключения вкладок
     const loginCard = document.getElementById('login-card');
-    const mainHeading = document.getElementById('main-heading');
-    const localOverlay = document.getElementById('local-transition-overlay');
+    const registerCard = document.getElementById('register-card');
+    const showLoginBtn = document.getElementById('show-login');
+    const showRegisterBtn = document.getElementById('show-register');
 
-    const duration = 1000; // Длительность перехода в мс (1.0s)
-    const switchPoint = duration / 2; // Точка смены форм (500 мс)
+    showLoginBtn.addEventListener('click', () => {
+        registerCard.classList.remove('visible');
+        loginCard.classList.add('visible');
+        showRegisterBtn.classList.remove('active');
+        showLoginBtn.classList.add('active');
+    });
 
-    /**
-     * ПЕРЕХОД: Вход (сверху-справа -> снизу-слева)
-     */
-    function showLoginWithTransition(event) {
-        event.preventDefault();
-
-        // 1. Установка начального состояния и градиента
-        localOverlay.style.background = 'linear-gradient(to bottom left, var(--primary-color) 0%, white 90%)';
-        localOverlay.style.clipPath = 'circle(0% at 100% 0%)'; // Начинаем с 0% в правом верхнем углу
-        localOverlay.style.opacity = '1';
-
-        // 2. Запуск анимации: расширяемся до левого нижнего угла
-        void localOverlay.offsetWidth; // Принудительная перерисовка
-        localOverlay.style.clipPath = 'circle(150% at 0% 100%)';
-
-        // 3. Обновление заголовка
-        mainHeading.innerHTML = "С возвращением! <br>Просто войдите.";
-
-        // 4. Смена форм - происходит на полпути (500 мс), когда оверлей полностью заполнен
-        setTimeout(() => {
-            registerCard.classList.remove('visible');
-            registerCard.classList.add('hidden');
-            loginCard.classList.remove('hidden');
-            loginCard.classList.add('visible');
-        }, switchPoint); // Смена формы через 500 мс
-
-        // 5. Сброс оверлея - происходит в конце (1000 мс)
-        setTimeout(() => {
-            localOverlay.style.opacity = '0';
-            // Сброс clip-path в начальное состояние, чтобы при следующем вызове анимация началась корректно
-            // Мы сбрасываем его в начальное состояние анимации "Вход", которое было (0% at 100% 0%)
-            localOverlay.style.clipPath = 'circle(0% at 100% 0%)';
-        }, duration);
-    }
-
-    /**
-     * ПЕРЕХОД: Регистрация (снизу-слева -> сверху-справа)
-     */
-    function showRegisterWithTransition(event) {
-        event.preventDefault();
-
-        // 1. Установка начального состояния и градиента
-        localOverlay.style.background = 'linear-gradient(to top right, var(--primary-color) 0%, white 90%)';
-        localOverlay.style.clipPath = 'circle(0% at 0% 100%)'; // Начинаем с 0% в левом нижнем углу
-        localOverlay.style.opacity = '1';
-
-        // 2. Запуск анимации: расширяемся до правого верхнего угла
-        void localOverlay.offsetWidth; // Принудительная перерисовка
-        localOverlay.style.clipPath = 'circle(150% at 100% 0%)';
-
-        // 3. Обновляем заголовок
-        mainHeading.innerHTML = "GGChat. <br>Общайтесь проще.";
-
-        // 4. Смена форм - происходит на полпути (500 мс), когда оверлей полностью заполнен
-        setTimeout(() => {
-            loginCard.classList.remove('visible');
-            loginCard.classList.add('hidden');
-            registerCard.classList.remove('hidden');
-            registerCard.classList.add('visible');
-        }, switchPoint); // Смена формы через 500 мс
-
-        // 5. Сброс оверлея - происходит в конце (1000 мс)
-        setTimeout(() => {
-            localOverlay.style.opacity = '0';
-            // Сброс clip-path в начальное состояние анимации "Регистрация", которое было (0% at 0% 100%)
-            localOverlay.style.clipPath = 'circle(0% at 0% 100%)';
-        }, duration);
-    }
+    showRegisterBtn.addEventListener('click', () => {
+        loginCard.classList.remove('visible');
+        registerCard.classList.add('visible');
+        showLoginBtn.classList.remove('active');
+        showRegisterBtn.classList.add('active');
+    });
 
     // API Configuration
     const API_BASE_URL = '/api/v1/users';
+
     // Utility functions
     function showNotification(message, isError = false) {
-        // Создаем уведомление
+        // ... (ваш код уведомлений без изменений) ...
         const notification = document.createElement('div');
         notification.style.cssText = `
             position: fixed;
@@ -290,7 +257,6 @@
         notification.textContent = message;
         document.body.appendChild(notification);
         
-        // Автоматически удаляем через 5 секунд
         setTimeout(() => {
             notification.style.opacity = '0';
             setTimeout(() => {
@@ -309,11 +275,10 @@
         } else {
             button.disabled = false;
             button.style.opacity = '1';
-            // Восстанавливаем оригинальный текст
             if (button.closest('#register-card')) {
                 button.textContent = 'Зарегистрироваться';
             } else {
-                button.textContent = 'Войти в GGChat';
+                button.textContent = 'Войти';
             }
         }
     }
@@ -323,29 +288,27 @@
         event.preventDefault();
         
         const form = event.target;
+        // Используем ID reg-username, хотя LabeL - "Email"
         const username = form.querySelector('#reg-username').value.trim();
         const password = form.querySelector('#reg-password').value;
         const confirmPassword = form.querySelector('#reg-confirm-password').value;
         const submitButton = form.querySelector('.cta-button');
         
-        // Валидация
+        // ... (ваша валидация без изменений) ...
         if (!username || !password || !confirmPassword) {
             showNotification('Все поля обязательны для заполнения', true);
             return;
         }
-        
         if (password !== confirmPassword) {
             showNotification('Пароли не совпадают', true);
             return;
         }
-        
         if (password.length < 6) {
             showNotification('Пароль должен содержать минимум 6 символов', true);
             return;
         }
-        
         if (username.length < 3) {
-            showNotification('Имя пользователя должно содержать минимум 3 символа', true);
+            showNotification('Email/Имя пользователя должно содержать минимум 3 символа', true);
             return;
         }
         
@@ -354,11 +317,9 @@
         try {
             const response = await fetch(`${API_BASE_URL}/register`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json', },
                 body: JSON.stringify({
-                    username: username,
+                    username: username, // Отправляем как 'username'
                     password: password
                 })
             });
@@ -366,7 +327,9 @@
             const data = await response.json();
             
             if (response.ok && data.confirmation) {
-                showNotification(data.massage || 'Регистрация успешна!');
+                showNotification(data.massage || 'Регистрация успешна! Теперь войдите.');
+                // Автоматически переключаем на вкладку входа
+                showLoginBtn.click();
             } else {
                 showNotification(data.massage || 'Ошибка регистрации', true);
             }
@@ -383,71 +346,50 @@
         event.preventDefault();
         
         const form = event.target;
+        // Используем ID log-username, хотя LabeL - "Email"
         const username = form.querySelector('#log-username').value.trim();
         const password = form.querySelector('#log-password').value;
         const submitButton = form.querySelector('.cta-button');
         
-        // Валидация
+        // ... (ваша валидация без изменений) ...
         if (!username || !password) {
             showNotification('Все поля обязательны для заполнения', true);
             return;
         }
-        
         if (username.length < 3) {
-            showNotification('Имя пользователя должно содержать минимум 3 символа', true);
+            showNotification('Email/Имя пользователя должно содержать минимум 3 символа', true);
             return;
         }
         
         setButtonLoading(submitButton, true);
         
         try {
-            // Отладочный вывод запроса
-            console.log('Sending request to:', `${API_BASE_URL}/verifications`);
-            console.log('Request credentials:', 'include');
-            
             const response = await fetch(`${API_BASE_URL}/verifications`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json', },
                 credentials: 'include',
                 body: JSON.stringify({
-                    username: username,
+                    username: username, // Отправляем как 'username'
                     password: password
                 })
             });
             
-            console.log('Response received:', response);
-            console.log('Response status:', response.status);
-            console.log('Response headers:', [...response.headers.entries()]);
-            
             const data = await response.json();
             
-            // Логирование cookies
-            console.log('Cookies:', document.cookie);
-            console.log('Response headers:', [...response.headers.entries()]);
-            if (response.headers.has('set-cookie')) {
-                console.log('Set-Cookie header:', response.headers.get('set-cookie'));
-            }
-            
-            // Сохранение cookies в localStorage после успешной верификации
             if (response.ok && data.confirmation) {
+                // ... (ваш код сохранения cookie) ...
                 const cookieData = {
                     timestamp: new Date().toISOString(),
                     cookies: document.cookie,
                     responseHeaders: [...response.headers.entries()]
                 };
                 localStorage.setItem('authCookies', JSON.stringify(cookieData));
-                console.log('Cookies saved to localStorage');
-            }
-            
-            if (response.ok && data.confirmation) {
+                
                 showNotification('Вход выполнен успешно!');
                 window.location.href = '../chats/all_chats/allchat.html';
-                // Очищаем форму
                 form.reset();
             } else {
-                showNotification('Неверный логин или пароль', true);
+                showNotification('Неверный Email или пароль', true);
             }
         } catch (error) {
             console.error('Login error:', error);
@@ -456,11 +398,6 @@
             setButtonLoading(submitButton, false);
         }
     }
-    
-    // Привязка всех кнопок
-    document.getElementById('show-login-header').addEventListener('click', showLoginWithTransition);
-    document.getElementById('link-to-login').addEventListener('click', showLoginWithTransition);
-    document.getElementById('link-to-register').addEventListener('click', showRegisterWithTransition);
     
     // Привязка обработчиков форм
     document.querySelector('#register-card form').addEventListener('submit', handleRegistration);

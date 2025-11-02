@@ -35,6 +35,9 @@
 
         .chat { background: #fff; border-radius: var(--border-radius-large); box-shadow: var(--shadow-light); min-height: calc(100vh - 190px); display: grid; grid-template-rows: 1fr auto; border: 1px solid #E2E8F0; }
         .messages { padding: 18px; overflow: auto; }
+        .message { margin-bottom: 12px; padding: 12px 16px; background: #F8FAFC; border-radius: 12px; max-width: 80%; }
+        .message.own { background: var(--primary-color); color: #fff; margin-left: auto; }
+        .message-content { word-break: break-word; }
         .message-empty { margin: 20px; padding: 16px; border: 1px dashed #CBD5E1; border-radius: 12px; color: #64748B; text-align: center; }
         .composer { display: flex; gap: 10px; padding: 14px; border-top: 1px solid #E2E8F0; }
         .input { flex: 1; padding: 12px 14px; border: 1px solid #E2E8F0; border-radius: 12px; font-size: 16px; }
@@ -128,13 +131,124 @@
         // Получение UUID чата из URL
         const urlParams = new URLSearchParams(window.location.search);
         const chatUuid = urlParams.get('uuid');
+        
+        // Элементы DOM для сообщений
+        const messageForm = document.getElementById('composer');
+        const messageInput = document.getElementById('message-input');
+        const messagesContainer = document.getElementById('messages');
+        
+        // Обработчик отправки сообщения
+        messageForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const content = messageInput.value.trim();
+            if (!content) return;
+            
+            try {
+                // Отправка POST запроса для создания нового сообщения
+                const response = await fetch('/api/v1/chats/new_message', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include', // Включаем cookie в запрос
+                    body: JSON.stringify({
+                        chat_id: chatUuid,
+                        content: content
+                    })
+                });
+                
+                if (response.ok) {
+                    // Очищаем поле ввода
+                    messageInput.value = '';
+                    
+                    // Обновляем список сообщений
+                    await loadMessages();
+                } else {
+                    console.error('Ошибка при отправке сообщения:', response.status);
+                    alert('Ошибка при отправке сообщения');
+                }
+            } catch (error) {
+                console.error('Ошибка при отправке сообщения:', error);
+                alert('Ошибка при отправке сообщения');
+            }
+        });
+        
+        // Загрузка сообщений чата
+        async function loadMessages() {
+            if (!chatUuid) {
+                messagesContainer.innerHTML = '<div class="message-empty">Не указан UUID чата</div>';
+                return;
+            }
+            
+            try {
+                // Отправка GET запроса для получения списка сообщений
+                const response = await fetch(`/api/v1/chats/get_message?chat_id=${chatUuid}`, {
+                    credentials: 'include' // Включаем cookie в запрос
+                });
+                
+                if (response.ok) {
+                    const messages = await response.json();
+                    
+                    if (messages && messages.length > 0) {
+                        // Отображаем сообщения
+                        displayMessages(messages);
+                    } else {
+                        messagesContainer.innerHTML = '<div class="message-empty">Сообщений пока нет. Напишите первое сообщение ниже.</div>';
+                    }
+                } else {
+                    console.error('Ошибка при загрузке сообщений:', response.status);
+                    messagesContainer.innerHTML = '<div class="message-empty">Ошибка загрузки сообщений</div>';
+                }
+            } catch (error) {
+                console.error('Ошибка при загрузке сообщений:', error);
+                messagesContainer.innerHTML = '<div class="message-empty">Ошибка загрузки сообщений</div>';
+            }
+        }
+        
+        // Отображение сообщений в чате
+        function displayMessages(messages) {
+            // Очищаем контейнер сообщений
+            messagesContainer.innerHTML = '';
+            
+            // Получаем ID текущего пользователя из localStorage или другого источника
+            // Для простоты предположим, что у нас есть функция getUserId()
+            // В реальном приложении нужно получать реальный ID пользователя
+            // Например, из JWT токена или сессии
+            const currentUserId = 1; // Заглушка, в реальном приложении нужно получать реальный ID
+            
+            // Добавляем сообщения в контейнер
+            messages.forEach(message => {
+                const messageElement = document.createElement('div');
+                messageElement.className = 'message';
+                
+                // Если сообщение от текущего пользователя, добавляем класс 'own'
+                if (message.user_id === currentUserId) {
+                    messageElement.classList.add('own');
+                }
+                
+                messageElement.innerHTML = `
+                    <div class="message-content">
+                        ${message.content}
+                    </div>
+                `;
+                messagesContainer.appendChild(messageElement);
+            });
+            
+            // Прокручиваем к последнему сообщению
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+        
+        // Загрузка сообщений при загрузке страницы
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Загружаем информацию о чате и сообщения
+            await Promise.all([loadChatInfo(), loadMessages()]);
+        });
 
         // Элементы DOM
         const goBackBtn = document.getElementById('go-back');
         const chatTitle = document.getElementById('chat-title');
         const chatSubtitle = document.getElementById('chat-subtitle');
-        const chatIdBox = document.getElementById('chat-id-box');
-        const copyIdBtn = document.getElementById('copy-id');
         const openSettingsBtn = document.getElementById('open-settings');
         const closeSettingsBtn = document.getElementById('close-settings');
         const deleteChatBtn = document.getElementById('delete-chat');
@@ -177,21 +291,6 @@
             }
         });
 
-        // Копирование UUID чата
-        copyIdBtn.addEventListener('click', () => {
-            navigator.clipboard.writeText(chatUuid)
-                .then(() => {
-                    // Временно меняем текст кнопки
-                    const originalText = copyIdBtn.textContent;
-                    copyIdBtn.textContent = 'Скопировано!';
-                    setTimeout(() => {
-                        copyIdBtn.textContent = originalText;
-                    }, 2000);
-                })
-                .catch(err => {
-                    console.error('Ошибка при копировании UUID:', err);
-                });
-        });
 
         // Удаление чата
         deleteChatBtn.addEventListener('click', async () => {
@@ -246,17 +345,14 @@
                         // Отображение информации о чате
                         chatTitle.textContent = currentChat.name;
                         chatSubtitle.textContent = `Чат создан`;
-                        chatIdBox.textContent = currentChat.uuid;
                     } else {
                         chatTitle.textContent = 'Чат не найден';
                         chatSubtitle.textContent = 'Чат с таким UUID не существует';
-                        chatIdBox.textContent = chatUuid;
                     }
                 } else {
                     console.error('Ошибка при загрузке информации о чате:', response.status);
                     chatTitle.textContent = 'Ошибка загрузки';
                     chatSubtitle.textContent = 'Не удалось загрузить информацию о чате';
-                    chatIdBox.textContent = chatUuid;
                 }
             } catch (error) {
                 console.error('Ошибка при загрузке информации о чате:', error);
@@ -266,8 +362,6 @@
             }
         }
 
-        // Загрузка информации о чате при загрузке страницы
-        document.addEventListener('DOMContentLoaded', loadChatInfo);
     </script>
 </body>
 </html>

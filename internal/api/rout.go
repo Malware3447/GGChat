@@ -80,6 +80,8 @@ func (a *Api) Init() {
 		router.Post("/new_chat", a.apiChat.NewChat)
 		router.Delete("/delete_chat/{uuid}", a.apiChat.DeleteChat)
 		router.Get("/all_chats", a.apiChat.GetAllChats)
+		router.Post("/new_message", a.apiChat.NewMessage)
+		router.Get("/get_message/{chat_id}", a.apiChat.GetMessage)
 	})
 }
 

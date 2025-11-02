@@ -82,7 +82,7 @@ func (repo *RepositoryPg) NewUser(ctx context.Context, username, password string
 	return true, id, nil
 }
 
-func (repo *RepositoryPg) NewChat(ctx context.Context, chatName string, UserId int) (bool, uuid.UUID, error) {
+func (repo *RepositoryPg) NewChat(ctx context.Context, chatName string, UserId int, other_user_id int) (bool, uuid.UUID, error) {
 	var ChatId uuid.UUID
 	const q = `
 		INSERT INTO chats (name)
@@ -105,6 +105,16 @@ func (repo *RepositoryPg) NewChat(ctx context.Context, chatName string, UserId i
 		return false, ChatId, fmt.Errorf("не удалось создать чат: %w", err)
 	}
 
+	const b = `
+		INSERT INTO chat_nembers (chat_id, user_id)
+		VALUES ($1, $2)
+	`
+
+	_, err = repo.db.Exec(ctx, b, ChatId, other_user_id)
+	if err != nil {
+		return false, ChatId, fmt.Errorf("не удалось создать чат: %w", err)
+	}
+
 	return true, ChatId, nil
 }
 
@@ -120,7 +130,7 @@ func (repo *RepositoryPg) DeleteChat(ctx context.Context, uuid uuid.UUID) error 
 	}
 	rowsAffected := result.RowsAffected()
 	if rowsAffected == 0 {
-		return fmt.Errorf("Чат не найден или был удален ранее")
+		return fmt.Errorf("чат не найден или был удален ранее")
 	}
 
 	const q = `
@@ -188,4 +198,58 @@ func (repo *RepositoryPg) GetAllChats(ctx context.Context, UserId int) ([]chats.
 	}
 
 	return Chats, nil
+}
+
+func (repo *RepositoryPg) GetUser(ctx context.Context, username string) (int, error) {
+	var user_id int
+	const q = `
+		SELECT id FROM users
+		WHERE username = $1
+	`
+
+	err := repo.db.QueryRow(ctx, q, username).Scan(&user_id)
+	if err != nil {
+		return -1, fmt.Errorf("ошибка при получение списка всех пользователей: %v", err)
+	}
+
+	return user_id, nil
+}
+
+func (repo *RepositoryPg) NewMessage(ctx context.Context, chatId uuid.UUID, senderId int, content string) error {
+	const q = `
+		INSERT INTO message (chat_id, sender_id, content)
+		VALUES ($1, $2, $3)
+	`
+
+	_, err := repo.db.Exec(ctx, q, chatId, senderId, content)
+	if err != nil {
+		return fmt.Errorf("ошибка при отправке сообщения: %v", err)
+	}
+
+	return nil
+}
+
+func (repo *RepositoryPg) GetMessage(ctx context.Context, chatId uuid.UUID) ([]chats.Message, error) {
+	const q = `
+		SELECT sender_id, content FROM message
+		WHERE chat_id = $1
+		ORDER BY id ASC
+	`
+
+	rows, err := repo.db.Query(ctx, q, chatId)
+	if err != nil {
+		return nil, fmt.Errorf("не получилось получить список сообщений: %v", err)
+	}
+
+	var result []chats.Message
+	for rows.Next() {
+		var message chats.Message
+		err := rows.Scan(&message.UserId, &message.Content)
+		if err != nil {
+			return nil, fmt.Errorf("ошибка при сканировании: %v", err)
+		}
+		result = append(result, message)
+	}
+
+	return result, nil
 }
