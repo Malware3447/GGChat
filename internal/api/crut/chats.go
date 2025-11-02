@@ -3,22 +3,34 @@ package crut
 import (
 	"GGChat/internal/models/chats"
 	"GGChat/internal/service/db"
+	MyWS "GGChat/internal/websocket"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
 )
 
-type ApiChats struct {
-	repo *db.DbService
+var upgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool {
+		return true
+	},
 }
 
-func NewApiChats(repo *db.DbService) *ApiChats {
+type ApiChats struct {
+	repo             *db.DbService
+	WebsocketManager *MyWS.Manager
+}
+
+func NewApiChats(repo *db.DbService, wsManager *MyWS.Manager) *ApiChats {
 	return &ApiChats{
-		repo: repo,
+		repo:             repo,
+		WebsocketManager: wsManager,
 	}
 }
 
@@ -214,4 +226,105 @@ func (a *ApiChats) GetMessage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
+}
+
+func (a *ApiChats) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
+	logrus.Info("MEOW")
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		logrus.Error("ошибка апгрейда до WebSocket: ", err)
+		return
+	}
+
+	chatIdStr := chi.URLParam(r, "chat_id")
+
+	userId, ok := r.Context().Value("user_id").(int)
+	if !ok {
+		logrus.Error("ошибка получения Id пользователя из контекста")
+		conn.Close()
+		return
+	}
+
+	client := &MyWS.Client{
+		Id:     fmt.Sprintf("%d-%s", userId, chatIdStr),
+		UserId: userId,
+		ChatId: chatIdStr,
+		Conn:   conn,
+		Send:   make(chan []byte, 256),
+	}
+
+	a.WebsocketManager.Register <- client
+
+	go a.handleClientMessages(client)
+	go a.writeMessagesToClient(client)
+}
+
+func (a *ApiChats) handleClientMessages(client *MyWS.Client) {
+	defer func() {
+		a.WebsocketManager.Undergister <- client
+		client.Conn.Close()
+	}()
+
+	for {
+		var msg MyWS.Message
+		err := client.Conn.ReadJSON(&msg)
+
+		if err != nil {
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+				logrus.Error("Ошибка чтения/закрытия соединения:", err)
+			}
+			break
+		}
+
+		switch msg.Type {
+		case "new_message":
+			chatId, err := uuid.Parse(client.ChatId)
+			if err != nil {
+				logrus.Error("Ошибка парсинга ChatId:", err)
+				continue
+			}
+
+			err = a.repo.NewMessage(context.Background(), chatId, client.UserId, msg.Content)
+			if err != nil {
+				logrus.Error("Ошибка сохранения сообщения:", err)
+				continue
+			}
+
+			message := MyWS.Message{
+				Type:      "new_message",
+				Content:   msg.Content,
+				ChatId:    client.ChatId,
+				UserId:    client.UserId,
+				Timestamp: time.Now(),
+			}
+			a.WebsocketManager.SendMessage(message)
+		default:
+			logrus.Warnf("Получено сообщение с неизвестным типом: %s", msg.Type)
+		}
+	}
+}
+
+func (a *ApiChats) writeMessagesToClient(client *MyWS.Client) {
+	defer client.Conn.Close()
+
+	for message := range client.Send {
+
+		w, err := client.Conn.NextWriter(websocket.TextMessage)
+		if err != nil {
+			return
+		}
+
+		w.Write(message)
+
+		n := len(client.Send)
+		for i := 0; i < n; i++ {
+			w.Write(<-client.Send)
+		}
+
+		if err := w.Close(); err != nil {
+			return
+		}
+	}
+
+	client.Conn.WriteMessage(websocket.CloseMessage, []byte{})
 }

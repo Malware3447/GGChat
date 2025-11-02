@@ -3,6 +3,9 @@ package api
 import (
 	"GGChat/internal/api/crut"
 	"GGChat/internal/config"
+	"bufio"
+	"fmt"
+	"net"
 	"net/http"
 
 	MyMDL "GGChat/internal/api/middleware"
@@ -19,7 +22,6 @@ type Api struct {
 	cfg        *config.Config
 }
 
-// responseWrapper оборачивает http.ResponseWriter для перехвата статуса ответа
 type responseWrapper struct {
 	http.ResponseWriter
 	statusCode int
@@ -28,6 +30,19 @@ type responseWrapper struct {
 func (rw *responseWrapper) WriteHeader(code int) {
 	rw.statusCode = code
 	rw.ResponseWriter.WriteHeader(code)
+}
+
+func (rw *responseWrapper) Flush() {
+	if fl, ok := rw.ResponseWriter.(http.Flusher); ok {
+		fl.Flush()
+	}
+}
+
+func (rw *responseWrapper) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	if hj, ok := rw.ResponseWriter.(http.Hijacker); ok {
+		return hj.Hijack()
+	}
+	return nil, nil, fmt.Errorf("responseWrapper: ResponseWriter не реализует http.Hijacker")
 }
 
 func NewApi(apiService *crut.ApiVerifications, apiChat *crut.ApiChats, cfg *config.Config) *Api {
@@ -82,6 +97,7 @@ func (a *Api) Init() {
 		router.Get("/all_chats", a.apiChat.GetAllChats)
 		router.Post("/new_message", a.apiChat.NewMessage)
 		router.Get("/get_message/{chat_id}", a.apiChat.GetMessage)
+		router.Get("/ws/{chat_id}", a.apiChat.HandleWebSocket)
 	})
 }
 

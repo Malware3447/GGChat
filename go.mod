@@ -6,9 +6,9 @@ require (
 	github.com/Malware3447/configo v1.0.2
 	github.com/Malware3447/spg v1.0.0
 	github.com/go-chi/chi/v5 v5.2.3
-	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/google/uuid v1.6.0
+	github.com/gorilla/websocket v1.5.3
 	github.com/jackc/pgx/v5 v5.7.6
 	github.com/sirupsen/logrus v1.9.3
 )
