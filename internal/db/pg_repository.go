@@ -46,12 +46,18 @@ func (repo *RepositoryPg) UsersVerification(ctx context.Context, username, passw
 }
 
 func (repo *RepositoryPg) NewUser(ctx context.Context, username, password string) (bool, int, error) {
+	tx, err := repo.db.Begin(ctx)
+	if err != nil {
+		return false, -1, fmt.Errorf("не удалось начать транзакцию: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
 	const q = `
 	INSERT INTO users (username, password)
 	VALUES ($1, $2)
 	`
 
-	_, err := repo.db.Exec(ctx, q, username, password)
+	_, err = tx.Exec(ctx, q, username, password)
 
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
@@ -69,7 +75,7 @@ func (repo *RepositoryPg) NewUser(ctx context.Context, username, password string
 
 	var id int
 
-	err = repo.db.QueryRow(ctx, b, username).Scan(&id)
+	err = tx.QueryRow(ctx, b, username).Scan(&id)
 
 	if errors.Is(err, pgx.ErrNoRows) {
 		return false, -1, nil
@@ -79,10 +85,20 @@ func (repo *RepositoryPg) NewUser(ctx context.Context, username, password string
 		return false, -1, fmt.Errorf("ошибка при поиске данных в БД: %w", err)
 	}
 
+	if err := tx.Commit(ctx); err != nil {
+		return false, -1, fmt.Errorf("не удалось закоммитить транзакцию: %w", err)
+	}
+
 	return true, id, nil
 }
 
 func (repo *RepositoryPg) NewChat(ctx context.Context, chatName string, UserId int, other_user_id int) (bool, uuid.UUID, error) {
+	tx, err := repo.db.Begin(ctx)
+	if err != nil {
+		return false, uuid.UUID{}, fmt.Errorf("не удалось начать транзакцию: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
 	var ChatId uuid.UUID
 	const q = `
 		INSERT INTO chats (name)
@@ -90,7 +106,7 @@ func (repo *RepositoryPg) NewChat(ctx context.Context, chatName string, UserId i
 		returning uuid
 	`
 
-	err := repo.db.QueryRow(ctx, q, chatName).Scan(&ChatId)
+	err = tx.QueryRow(ctx, q, chatName).Scan(&ChatId)
 	if err != nil {
 		return false, ChatId, fmt.Errorf("не удалось создать чат: %w", err)
 	}
@@ -100,7 +116,7 @@ func (repo *RepositoryPg) NewChat(ctx context.Context, chatName string, UserId i
 		VALUES ($1, $2)
 	`
 
-	_, err = repo.db.Exec(ctx, p, ChatId, UserId)
+	_, err = tx.Exec(ctx, p, ChatId, UserId)
 	if err != nil {
 		return false, ChatId, fmt.Errorf("не удалось создать чат: %w", err)
 	}
@@ -110,21 +126,31 @@ func (repo *RepositoryPg) NewChat(ctx context.Context, chatName string, UserId i
 		VALUES ($1, $2)
 	`
 
-	_, err = repo.db.Exec(ctx, b, ChatId, other_user_id)
+	_, err = tx.Exec(ctx, b, ChatId, other_user_id)
 	if err != nil {
 		return false, ChatId, fmt.Errorf("не удалось создать чат: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return false, ChatId, fmt.Errorf("не удалось закоммитить транзакцию: %w", err)
 	}
 
 	return true, ChatId, nil
 }
 
 func (repo *RepositoryPg) DeleteChat(ctx context.Context, uuid uuid.UUID) error {
+	tx, err := repo.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("не удалось начать транзакцию: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
 	const r = `
 		SELECT uuid FROM chats
 		WHERE uuid = $1
 	`
 
-	result, err := repo.db.Exec(ctx, r, uuid)
+	result, err := tx.Exec(ctx, r, uuid)
 	if err != nil {
 		return err
 	}
@@ -138,7 +164,7 @@ func (repo *RepositoryPg) DeleteChat(ctx context.Context, uuid uuid.UUID) error 
 		WHERE chat_id = $1
 	`
 
-	_, err = repo.db.Exec(ctx, q, uuid)
+	_, err = tx.Exec(ctx, q, uuid)
 	if err != nil {
 		return err
 	}
@@ -148,7 +174,7 @@ func (repo *RepositoryPg) DeleteChat(ctx context.Context, uuid uuid.UUID) error 
 		WHERE chat_id = $1
 	`
 
-	_, err = repo.db.Exec(ctx, w, uuid)
+	_, err = tx.Exec(ctx, w, uuid)
 	if err != nil {
 		return err
 	}
@@ -158,13 +184,17 @@ func (repo *RepositoryPg) DeleteChat(ctx context.Context, uuid uuid.UUID) error 
 		WHERE uuid = $1
 	`
 
-	result, err = repo.db.Exec(ctx, e, uuid)
+	result, err = tx.Exec(ctx, e, uuid)
 	if err != nil {
 		return err
 	}
 	rowsAffected = result.RowsAffected()
 	if rowsAffected == 0 {
 		return fmt.Errorf("чат не был удален")
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("не удалось закоммитить транзакцию: %w", err)
 	}
 	return nil
 }
@@ -301,15 +331,21 @@ func (repo *RepositoryPg) NewMessage(ctx context.Context, chatId uuid.UUID, send
 	return messageId, senderStatus, nil
 }
 func (repo *RepositoryPg) GetMessage(ctx context.Context, chatId uuid.UUID, currentUserId int) ([]chats.Message, error) {
+	tx, err := repo.db.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("не удалось начать транзакцию: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
 	const q = `
         SELECT m.id, m.sender_id, m.content, ms.status, m.sent_at
         FROM message m
         JOIN message_status ms ON m.id = ms.message_id
-        WHERE m.chat_id = $1
+        WHERE m.chat_id = $1 AND ms.user_id = $2
         ORDER BY m.id ASC
     `
 
-	rows, err := repo.db.Query(ctx, q, chatId)
+	rows, err := tx.Query(ctx, q, chatId, currentUserId)
 	if err != nil {
 		return nil, fmt.Errorf("не получилось получить список сообщений: %v", err)
 	}
@@ -336,23 +372,37 @@ func (repo *RepositoryPg) GetMessage(ctx context.Context, chatId uuid.UUID, curr
         AND status != 'read'
     `
 
-	_, err = repo.db.Exec(ctx, w, chatId, currentUserId)
+	_, err = tx.Exec(ctx, w, chatId, currentUserId)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка при установке статуса 'read': %v", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("не удалось закоммитить транзакцию: %w", err)
 	}
 
 	return result, nil
 }
 
 func (repo *RepositoryPg) UpdateMessageStatus(ctx context.Context, messageId int, status string) error {
+	tx, err := repo.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("не удалось начать транзакцию: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
 	const q = `
 		UPDATE message_status
 		SET status = $1
 		WHERE message_id = $2 AND status != 'read'
 	`
-	_, err := repo.db.Exec(ctx, q, status, messageId)
+	_, err = tx.Exec(ctx, q, status, messageId)
 	if err != nil {
 		return fmt.Errorf("ошибка при обновлении статуса сообщения: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("не удалось закоммитить транзакцию: %w", err)
 	}
 	return nil
 }
