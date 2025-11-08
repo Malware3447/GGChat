@@ -174,16 +174,20 @@ func (a *ApiChats) NewMessage(w http.ResponseWriter, r *http.Request) {
 
 	ctx := context.Background()
 
-	err = a.repo.NewMessage(ctx, body.ChatId, userId, body.Content)
+	_, status, err := a.repo.NewMessage(ctx, body.ChatId, userId, body.Content)
 	if err != nil {
 		log.Warn("ошибка добавления сообщения в бд: ", err)
 		http.Error(w, "Error adding message in database", http.StatusBadRequest)
 		return
 	}
 
+	response := chats.Message{
+		Status: status,
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	if err = json.NewEncoder(w).Encode(nil); err != nil {
+	if err = json.NewEncoder(w).Encode(response); err != nil {
 		log.Warn("Ошибка сервера: ", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
@@ -195,7 +199,7 @@ func (a *ApiChats) NewMessage(w http.ResponseWriter, r *http.Request) {
 func (a *ApiChats) GetMessage(w http.ResponseWriter, r *http.Request) {
 	log := logrus.New()
 
-	_, ok := r.Context().Value("user_id").(int)
+	userId, ok := r.Context().Value("user_id").(int)
 	if !ok {
 		log.Warn("Ошибка получения ID пользователя из контекста")
 		http.Error(w, "Error get chats", http.StatusBadRequest)
@@ -212,7 +216,7 @@ func (a *ApiChats) GetMessage(w http.ResponseWriter, r *http.Request) {
 
 	ctx := context.Background()
 
-	response, err := a.repo.GetMessage(ctx, ChatId)
+	response, err := a.repo.GetMessage(ctx, ChatId, userId)
 	if err != nil {
 		log.Warn("ошибка получения списка сообщений: ", err)
 		http.Error(w, "error get list message", http.StatusBadRequest)
@@ -270,7 +274,7 @@ func (a *ApiChats) handleClientMessages(client *MyWS.Client) {
 		err := client.Conn.ReadJSON(&msg)
 
 		if err != nil {
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure, websocket.CloseNoStatusReceived) {
 				logrus.Error("Ошибка чтения/закрытия соединения:", err)
 			}
 			break
@@ -284,20 +288,39 @@ func (a *ApiChats) handleClientMessages(client *MyWS.Client) {
 				continue
 			}
 
-			err = a.repo.NewMessage(context.Background(), chatId, client.UserId, msg.Content)
+			messageId, status, err := a.repo.NewMessage(context.Background(), chatId, client.UserId, msg.Content)
 			if err != nil {
 				logrus.Error("Ошибка сохранения сообщения:", err)
-				continue
+				client.Conn.Close()
+				break
 			}
 
 			message := MyWS.Message{
+				Id:        messageId,
 				Type:      "new_message",
 				Content:   msg.Content,
 				ChatId:    client.ChatId,
 				UserId:    client.UserId,
+				Status:    status,
 				Timestamp: time.Now(),
 			}
 			a.WebsocketManager.SendMessage(message)
+
+		case "read_receipt":
+			err := a.repo.UpdateMessageStatus(context.Background(), msg.MessageId, "read")
+			if err != nil {
+				logrus.Error("Ошибка обновления статуса на 'read':", err)
+				continue
+			}
+
+			updateMessage := MyWS.Message{
+				Type:   "status_update",
+				Id:     msg.MessageId,
+				ChatId: client.ChatId,
+				Status: "read",
+			}
+			a.WebsocketManager.SendMessage(updateMessage)
+
 		default:
 			logrus.Warnf("Получено сообщение с неизвестным типом: %s", msg.Type)
 		}

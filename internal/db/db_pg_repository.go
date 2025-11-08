@@ -15,6 +15,7 @@ type PgRepository interface {
 	DeleteChat(ctx context.Context, uuid uuid.UUID) error
 	GetAllChats(ctx context.Context, UserId int) ([]chats.Chat, error)
 	GetUser(ctx context.Context, username string) (int, error)
-	NewMessage(ctx context.Context, chatId uuid.UUID, senderId int, content string) error
-	GetMessage(ctx context.Context, chatId uuid.UUID) ([]chats.Message, error)
+	NewMessage(ctx context.Context, chatId uuid.UUID, senderId int, content string) (int, string, error)
+	GetMessage(ctx context.Context, chatId uuid.UUID, currentUserId int) ([]chats.Message, error)
+	UpdateMessageStatus(ctx context.Context, messageId int, status string) error
 }

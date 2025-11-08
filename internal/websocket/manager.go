@@ -18,11 +18,14 @@ type Client struct {
 }
 
 type Message struct {
+	Id        int       `json:"id,omitempty"` // ID самого сообщения
 	Type      string    `json:"type"`
-	Content   string    `json:"content"`
+	Content   string    `json:"content,omitempty"`
 	ChatId    string    `json:"chat_id"`
 	UserId    int       `json:"user_id"`
-	Timestamp time.Time `json:"timestamp"`
+	Status    string    `json:"status,omitempty"`
+	Timestamp time.Time `json:"timestamp,omitempty"`
+	MessageId int       `json:"message_id,omitempty"` // ID сообщения (для 'read_receipt')
 }
 
 type Manager struct {

@@ -1,6 +1,8 @@
 package chats
 
 import (
+	"time"
+
 	"github.com/google/uuid"
 )
 
@@ -25,11 +27,16 @@ type GetMessageRequest struct {
 }
 
 type Chat struct {
-	Uuid uuid.UUID `json:"uuid"`
-	Name string    `json:"name"`
+	Uuid        uuid.UUID `json:"uuid"`
+	Name        string    `json:"name"`
+	LastMessage *string   `json:"last_message"`
+	UnreadCount int       `json:"unread_count"`
 }
 
 type Message struct {
-	UserId  int    `json:"user_id"`
-	Content string `json:"content"`
+	MessageId int       `json:"message_id"`
+	UserId    int       `json:"user_id"`
+	Content   string    `json:"content"`
+	Status    string    `json:"status"`
+	Time      time.Time `json:"time"`
 }

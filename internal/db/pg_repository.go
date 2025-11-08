@@ -168,16 +168,32 @@ func (repo *RepositoryPg) DeleteChat(ctx context.Context, uuid uuid.UUID) error 
 	}
 	return nil
 }
-
 func (repo *RepositoryPg) GetAllChats(ctx context.Context, UserId int) ([]chats.Chat, error) {
-	const p = `
-		SELECT cn.chat_id, c.name
-		FROM chat_nembers cn
-		JOIN chats c ON cn.chat_id = c.uuid
+	const q = `
+		SELECT c.uuid, c.name,
+			(
+				SELECT m.content
+				FROM message m
+				WHERE m.chat_id = c.uuid
+				ORDER BY m.sent_at DESC
+				LIMIT 1
+			) AS last_message,
+			(
+				SELECT COUNT(*)
+				FROM message_status ms
+				JOIN message m ON ms.message_id = m.id
+				WHERE m.chat_id = c.uuid      
+				AND ms.user_id = $1           
+				AND ms.status != 'read'       
+				AND m.sender_id != $1         
+			) AS unread_count
+		FROM chats c
+		JOIN chat_nembers cn ON c.uuid = cn.chat_id
 		WHERE cn.user_id = $1
+		ORDER BY (SELECT m.sent_at FROM message m WHERE m.chat_id = c.uuid ORDER BY m.sent_at DESC LIMIT 1) DESC NULLS LAST
 	`
 
-	rows, err := repo.db.Query(ctx, p, UserId)
+	rows, err := repo.db.Query(ctx, q, UserId)
 	if err != nil {
 		return nil, fmt.Errorf("не удалось получить список чатов пользователя: %w", err)
 	}
@@ -186,9 +202,9 @@ func (repo *RepositoryPg) GetAllChats(ctx context.Context, UserId int) ([]chats.
 	var Chats []chats.Chat
 	for rows.Next() {
 		var chat chats.Chat
-		err := rows.Scan(&chat.Uuid, &chat.Name)
+		err := rows.Scan(&chat.Uuid, &chat.Name, &chat.LastMessage, &chat.UnreadCount)
 		if err != nil {
-			return nil, fmt.Errorf("ошибка при сканировании данных: %w", err)
+			return nil, fmt.Errorf("ошибка при сканировании данных чата: %w", err)
 		}
 		Chats = append(Chats, chat)
 	}
@@ -215,41 +231,128 @@ func (repo *RepositoryPg) GetUser(ctx context.Context, username string) (int, er
 	return user_id, nil
 }
 
-func (repo *RepositoryPg) NewMessage(ctx context.Context, chatId uuid.UUID, senderId int, content string) error {
+func (repo *RepositoryPg) NewMessage(ctx context.Context, chatId uuid.UUID, senderId int, content string) (int, string, error) {
+	tx, err := repo.db.Begin(ctx)
+	if err != nil {
+		return -1, "", fmt.Errorf("не удалось начать транзакцию: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
 	const q = `
-		INSERT INTO message (chat_id, sender_id, content)
+		INSERT INTO message (chat_id, sender_id, content, sent_at)
+		VALUES ($1, $2, $3, NOW())
+		RETURNING id
+	`
+	var messageId int
+	err = tx.QueryRow(ctx, q, chatId, senderId, content).Scan(&messageId)
+	if err != nil {
+		return -1, "", fmt.Errorf("ошибка при отправке сообщения: %v", err)
+	}
+
+	const qMembers = `
+		SELECT user_id FROM chat_nembers
+		WHERE chat_id = $1
+	`
+	rows, err := tx.Query(ctx, qMembers, chatId)
+	if err != nil {
+		return -1, "", fmt.Errorf("ошибка при получении участников чата: %v", err)
+	}
+
+	var memberIds []int
+	for rows.Next() {
+		var userId int
+		if err := rows.Scan(&userId); err != nil {
+			rows.Close()
+			return -1, "", fmt.Errorf("ошибка сканирования user_id: %v", err)
+		}
+		memberIds = append(memberIds, userId)
+	}
+
+	rows.Close()
+
+	if err := rows.Err(); err != nil {
+		return -1, "", fmt.Errorf("ошибка при итерации по участникам: %v", err)
+	}
+
+	const qStatus = `
+		INSERT INTO message_status (message_id, user_id, status)
 		VALUES ($1, $2, $3)
 	`
 
-	_, err := repo.db.Exec(ctx, q, chatId, senderId, content)
-	if err != nil {
-		return fmt.Errorf("ошибка при отправке сообщения: %v", err)
+	senderStatus := "read"
+
+	for _, userId := range memberIds {
+		var status string
+		if userId == senderId {
+			status = senderStatus
+		} else {
+			status = "delivered"
+		}
+
+		if _, err := tx.Exec(ctx, qStatus, messageId, userId, status); err != nil {
+			return -1, "", fmt.Errorf("ошибка при установке статуса сообщения: %w", err)
+		}
 	}
 
-	return nil
-}
+	if err := tx.Commit(ctx); err != nil {
+		return -1, "", fmt.Errorf("не удалось закоммитить транзакцию: %w", err)
+	}
 
-func (repo *RepositoryPg) GetMessage(ctx context.Context, chatId uuid.UUID) ([]chats.Message, error) {
+	return messageId, senderStatus, nil
+}
+func (repo *RepositoryPg) GetMessage(ctx context.Context, chatId uuid.UUID, currentUserId int) ([]chats.Message, error) {
 	const q = `
-		SELECT sender_id, content FROM message
-		WHERE chat_id = $1
-		ORDER BY id ASC
-	`
+        SELECT m.id, m.sender_id, m.content, ms.status, m.sent_at
+        FROM message m
+        JOIN message_status ms ON m.id = ms.message_id
+        WHERE m.chat_id = $1
+        ORDER BY m.id ASC
+    `
 
 	rows, err := repo.db.Query(ctx, q, chatId)
 	if err != nil {
 		return nil, fmt.Errorf("не получилось получить список сообщений: %v", err)
 	}
+	defer rows.Close()
 
 	var result []chats.Message
 	for rows.Next() {
 		var message chats.Message
-		err := rows.Scan(&message.UserId, &message.Content)
+		// Убедитесь, что в вашей структуре chats.Message есть поле Id int `json:"id"`
+		err := rows.Scan(&message.MessageId, &message.UserId, &message.Content, &message.Status, &message.Time)
 		if err != nil {
 			return nil, fmt.Errorf("ошибка при сканировании: %v", err)
 		}
 		result = append(result, message)
 	}
 
+	const w = `
+        UPDATE message_status
+        SET status = 'read'
+        WHERE message_id IN (
+            SELECT id FROM message
+            WHERE chat_id = $1 AND sender_id != $2
+        )
+        AND status != 'read'
+    `
+
+	_, err = repo.db.Exec(ctx, w, chatId, currentUserId)
+	if err != nil {
+		return nil, fmt.Errorf("ошибка при установке статуса 'read': %v", err)
+	}
+
 	return result, nil
+}
+
+func (repo *RepositoryPg) UpdateMessageStatus(ctx context.Context, messageId int, status string) error {
+	const q = `
+		UPDATE message_status
+		SET status = $1
+		WHERE message_id = $2 AND status != 'read'
+	`
+	_, err := repo.db.Exec(ctx, q, status, messageId)
+	if err != nil {
+		return fmt.Errorf("ошибка при обновлении статуса сообщения: %w", err)
+	}
+	return nil
 }
