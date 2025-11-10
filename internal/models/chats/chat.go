@@ -27,16 +27,18 @@ type GetMessageRequest struct {
 }
 
 type Chat struct {
-	Uuid        uuid.UUID `json:"uuid"`
-	Name        string    `json:"name"`
-	LastMessage *string   `json:"last_message"`
-	UnreadCount int       `json:"unread_count"`
+	Uuid           uuid.UUID `json:"uuid"`
+	Name           string    `json:"name"`
+	LastMessage    *string   `json:"last_message"`
+	LastMessageKey *string   `json:"last_message_key"`
+	UnreadCount    int       `json:"unread_count"`
 }
 
 type Message struct {
-	MessageId int       `json:"message_id"`
-	UserId    int       `json:"user_id"`
-	Content   string    `json:"content"`
-	Status    string    `json:"status"`
-	Time      time.Time `json:"time"`
+	MessageId    int       `json:"message_id"`
+	UserId       int       `json:"user_id"`
+	Content      string    `json:"content"`
+	EncryptedKey string    `json:"encrypted_key"`
+	Status       string    `json:"status"`
+	Time         time.Time `json:"time"`
 }

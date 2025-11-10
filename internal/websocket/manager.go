@@ -18,19 +18,25 @@ type Client struct {
 }
 
 type Message struct {
-	Id        int       `json:"id,omitempty"` // ID самого сообщения
-	Type      string    `json:"type"`
-	Content   string    `json:"content,omitempty"`
-	ChatId    string    `json:"chat_id"`
-	UserId    int       `json:"user_id"`
-	Status    string    `json:"status,omitempty"`
-	Timestamp time.Time `json:"timestamp,omitempty"`
-	MessageId int       `json:"message_id,omitempty"` // ID сообщения (для 'read_receipt')
+	Id        int            `json:"id,omitempty"`
+	Type      string         `json:"type"`
+	Content   string         `json:"content,omitempty"`
+	Keys      map[int]string `json:"keys,omitempty"`
+	ChatId    string         `json:"chat_id"`
+	UserId    int            `json:"user_id"`
+	Status    string         `json:"status,omitempty"`
+	Timestamp time.Time      `json:"timestamp,omitempty"`
+	MessageId int            `json:"message_id,omitempty"`
+}
+
+type BroadcastMessage struct {
+	Message Message
+	Keys    map[int]string
 }
 
 type Manager struct {
 	Clients     map[*Client]bool
-	Broadcast   chan Message
+	Broadcast   chan BroadcastMessage
 	Register    chan *Client
 	Undergister chan *Client
 	Mutex       sync.Mutex
@@ -39,7 +45,7 @@ type Manager struct {
 func NewManager() *Manager {
 	return &Manager{
 		Clients:     make(map[*Client]bool),
-		Broadcast:   make(chan Message),
+		Broadcast:   make(chan BroadcastMessage),
 		Register:    make(chan *Client),
 		Undergister: make(chan *Client),
 	}
@@ -62,21 +68,40 @@ func (m *Manager) Run() {
 			}
 			m.Mutex.Unlock()
 
-		case message := <-m.Broadcast:
+		case broadcastMsg := <-m.Broadcast:
+			message := broadcastMsg.Message
+			keys := broadcastMsg.Keys
+
 			m.Mutex.Lock()
-			for Client := range m.Clients {
-				if Client.ChatId == message.ChatId {
+			for client := range m.Clients {
+				if client.ChatId == message.ChatId {
+
+					clientMessage := message
+
+					if encKey, ok := keys[client.UserId]; ok {
+						clientMessage.Keys = map[int]string{client.UserId: encKey}
+					} else {
+						if keys != nil {
+							continue
+						}
+					}
+
+					if client.UserId == message.UserId {
+						clientMessage.Status = "read"
+					} else {
+						clientMessage.Status = "delivered"
+					}
+
 					select {
-					case Client.Send <- m.MarshalMessage(message):
+					case client.Send <- m.MarshalMessage(clientMessage):
 					default:
-						close(Client.Send)
-						delete(m.Clients, Client)
+						close(client.Send)
+						delete(m.Clients, client)
 					}
 				}
 			}
 			m.Mutex.Unlock()
 		}
-
 	}
 }
 
@@ -88,6 +113,6 @@ func (m *Manager) MarshalMessage(msg Message) []byte {
 	return data
 }
 
-func (m *Manager) SendMessage(message Message) {
-	m.Broadcast <- message
+func (m *Manager) SendMessage(message Message, keys map[int]string) {
+	m.Broadcast <- BroadcastMessage{Message: message, Keys: keys}
 }

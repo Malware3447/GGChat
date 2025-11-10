@@ -198,16 +198,13 @@ func (repo *RepositoryPg) DeleteChat(ctx context.Context, uuid uuid.UUID) error 
 	}
 	return nil
 }
+
+// pg_repository.go
 func (repo *RepositoryPg) GetAllChats(ctx context.Context, UserId int) ([]chats.Chat, error) {
 	const q = `
-		SELECT c.uuid, c.name,
-			(
-				SELECT m.content
-				FROM message m
-				WHERE m.chat_id = c.uuid
-				ORDER BY m.sent_at DESC
-				LIMIT 1
-			) AS last_message,
+		SELECT 
+			c.uuid, 
+			c.name,
 			(
 				SELECT COUNT(*)
 				FROM message_status ms
@@ -216,11 +213,33 @@ func (repo *RepositoryPg) GetAllChats(ctx context.Context, UserId int) ([]chats.
 				AND ms.user_id = $1           
 				AND ms.status != 'read'       
 				AND m.sender_id != $1         
-			) AS unread_count
+			) AS unread_count,
+			-- Используем LATERAL JOIN для получения последнего сообщения и его ключа
+			lm.content AS last_message,
+			lmk.encrypted_key AS last_message_key
 		FROM chats c
 		JOIN chat_nembers cn ON c.uuid = cn.chat_id
+		
+		-- Находим последнее сообщение (lm)
+		LEFT JOIN LATERAL (
+			SELECT m.id, m.content, m.sent_at
+			FROM message m
+			WHERE m.chat_id = c.uuid
+			ORDER BY m.sent_at DESC
+			LIMIT 1
+		) lm ON true
+		
+		-- Находим ключ (lmk) ДЛЯ ЭТОГО пользователя и ДЛЯ ЭТОГО сообщения
+		LEFT JOIN LATERAL (
+			SELECT mk.encrypted_key
+			FROM message_keys mk
+			WHERE mk.message_id = lm.id AND mk.user_id = $1
+			LIMIT 1
+		) lmk ON true
+		
 		WHERE cn.user_id = $1
-		ORDER BY (SELECT m.sent_at FROM message m WHERE m.chat_id = c.uuid ORDER BY m.sent_at DESC LIMIT 1) DESC NULLS LAST
+		-- Сортируем по дате последнего сообщения
+		ORDER BY lm.sent_at DESC NULLS LAST;
 	`
 
 	rows, err := repo.db.Query(ctx, q, UserId)
@@ -232,7 +251,8 @@ func (repo *RepositoryPg) GetAllChats(ctx context.Context, UserId int) ([]chats.
 	var Chats []chats.Chat
 	for rows.Next() {
 		var chat chats.Chat
-		err := rows.Scan(&chat.Uuid, &chat.Name, &chat.LastMessage, &chat.UnreadCount)
+		// Теперь сканируем 5 полей, включая новое LastMessageKey
+		err := rows.Scan(&chat.Uuid, &chat.Name, &chat.UnreadCount, &chat.LastMessage, &chat.LastMessageKey)
 		if err != nil {
 			return nil, fmt.Errorf("ошибка при сканировании данных чата: %w", err)
 		}
@@ -261,7 +281,7 @@ func (repo *RepositoryPg) GetUser(ctx context.Context, username string) (int, er
 	return user_id, nil
 }
 
-func (repo *RepositoryPg) NewMessage(ctx context.Context, chatId uuid.UUID, senderId int, content string) (int, string, error) {
+func (repo *RepositoryPg) NewMessage(ctx context.Context, chatId uuid.UUID, senderId int, encryptedContent string, encryptedKeys map[int]string) (int, string, error) {
 	tx, err := repo.db.Begin(ctx)
 	if err != nil {
 		return -1, "", fmt.Errorf("не удалось начать транзакцию: %w", err)
@@ -274,9 +294,20 @@ func (repo *RepositoryPg) NewMessage(ctx context.Context, chatId uuid.UUID, send
 		RETURNING id
 	`
 	var messageId int
-	err = tx.QueryRow(ctx, q, chatId, senderId, content).Scan(&messageId)
+	err = tx.QueryRow(ctx, q, chatId, senderId, encryptedContent).Scan(&messageId)
 	if err != nil {
 		return -1, "", fmt.Errorf("ошибка при отправке сообщения: %v", err)
+	}
+
+	const qKey = `
+        INSERT INTO message_keys (message_id, user_id, encrypted_key)
+        VALUES ($1, $2, $3)
+    `
+
+	for userId, encKey := range encryptedKeys {
+		if _, err := tx.Exec(ctx, qKey, messageId, userId, encKey); err != nil {
+			return -1, "", err
+		}
 	}
 
 	const qMembers = `
@@ -338,9 +369,11 @@ func (repo *RepositoryPg) GetMessage(ctx context.Context, chatId uuid.UUID, curr
 	defer tx.Rollback(ctx)
 
 	const q = `
-        SELECT m.id, m.sender_id, m.content, ms.status, m.sent_at
+        SELECT m.id, m.sender_id, m.content, ms.status, m.sent_at,
+               COALESCE(mk.encrypted_key, '') as encrypted_key
         FROM message m
         JOIN message_status ms ON m.id = ms.message_id
+        LEFT JOIN message_keys mk ON m.id = mk.message_id AND mk.user_id = $2
         WHERE m.chat_id = $1 AND ms.user_id = $2
         ORDER BY m.id ASC
     `
@@ -354,8 +387,14 @@ func (repo *RepositoryPg) GetMessage(ctx context.Context, chatId uuid.UUID, curr
 	var result []chats.Message
 	for rows.Next() {
 		var message chats.Message
-		// Убедитесь, что в вашей структуре chats.Message есть поле Id int `json:"id"`
-		err := rows.Scan(&message.MessageId, &message.UserId, &message.Content, &message.Status, &message.Time)
+		err := rows.Scan(
+			&message.MessageId,
+			&message.UserId,
+			&message.Content,
+			&message.Status,
+			&message.Time,
+			&message.EncryptedKey,
+		)
 		if err != nil {
 			return nil, fmt.Errorf("ошибка при сканировании: %v", err)
 		}
@@ -405,4 +444,37 @@ func (repo *RepositoryPg) UpdateMessageStatus(ctx context.Context, messageId int
 		return fmt.Errorf("не удалось закоммитить транзакцию: %w", err)
 	}
 	return nil
+}
+
+func (repo *RepositoryPg) AddPublicKey(ctx context.Context, userId int, publicKey string) error {
+	const q = `UPDATE users SET public_key = $1 WHERE id = $2`
+	_, err := repo.db.Exec(ctx, q, publicKey, userId)
+	return err
+}
+
+func (repo *RepositoryPg) GetPublicKeysForChat(ctx context.Context, chatId uuid.UUID, senderId int) (map[int]string, error) {
+	const q = `
+        SELECT u.id, u.public_key 
+        FROM users u
+        JOIN chat_nembers cn ON u.id = cn.user_id
+        WHERE cn.chat_id = $1 AND u.id != $2
+    `
+	rows, err := repo.db.Query(ctx, q, chatId, senderId)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	keys := make(map[int]string)
+	for rows.Next() {
+		var userId int
+		var publicKey *string
+		if err := rows.Scan(&userId, &publicKey); err != nil {
+			return nil, err
+		}
+		if publicKey != nil {
+			keys[userId] = *publicKey
+		}
+	}
+	return keys, nil
 }

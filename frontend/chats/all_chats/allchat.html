@@ -451,7 +451,8 @@
                 </div>
             </div>
         </div>
-        
+
+        <script src="crypto.js"></script>
         <script>
     // --- Элементы DOM ---
     const openCreateBtn = document.getElementById('open-create');
@@ -478,6 +479,65 @@
     let currentWs = null;      // Хранит *текущее* WebSocket соединение
     let currentUserId = null;  // Хранит ID *этого* пользователя
     let lastDisplayedDate = null;
+
+    let userPrivateKey = null;
+    let chatPublicKeys = new Map();
+
+    async function initCryptoAndUser() {
+        // 1. Получаем ID пользователя
+        currentUserId = getUserIdFromToken();
+        if (!currentUserId) {
+            console.error("Критическая ошибка: ID пользователя не найден.");
+            // window.location.href = '../../autentifications/index.html';
+            return;
+        }
+        
+        // 2. Генерируем/загружаем ключи
+        const { privateKey, publicKeyPEM } = await cryptoUtils.initKeys();
+        userPrivateKey = privateKey; // Сохраняем в глобальное состояние
+        
+        // 3. Отправляем публичный ключ на сервер
+        // (Сервер должен быть готов его принять и сохранить)
+        // (Мы делаем это каждый раз - сервер может просто перезаписывать его)
+        try {
+            await fetch('/api/v1/users/public_key', { // Эндпоинт из Шага 2 (Backend)
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ public_key: publicKeyPEM })
+            });
+            console.log("Публичный ключ отправлен на сервер.");
+        } catch (e) {
+            console.error("Ошибка отправки публичного ключа:", e);
+        }
+    }
+
+    async function loadChatPublicKeys(chatUuid) {
+        try {
+            const response = await fetch(`/api/v1/chats/public_keys/${chatUuid}`, {
+                credentials: 'include'
+            });
+            if (!response.ok) {
+                throw new Error(`Ошибка HTTP: ${response.status}`);
+            }
+            const keys = await response.json(); // Ожидаем map[int]string
+            
+            chatPublicKeys = new Map();
+            for (const userId in keys) {
+                chatPublicKeys.set(parseInt(userId, 10), keys[userId]);
+            }
+            
+            // ВАЖНО: Добавляем свой собственный ключ, чтобы шифровать для себя
+            // (для просмотра в истории)
+            const myPublicKey = localStorage.getItem("user_public_key");
+            chatPublicKeys.set(currentUserId, myPublicKey);
+            
+            console.log("Публичные ключи для чата загружены:", chatPublicKeys);
+
+        } catch (e) {
+            console.error("Не удалось загрузить публичные ключи:", e);
+        }
+    }
 
     // --- Вспомогательные функции ---
 
@@ -565,7 +625,7 @@
             console.log('WebSocket соединение установлено');
         };
 
-        currentWs.onmessage = function(event) {
+        currentWs.onmessage = async function(event) {
             const message = JSON.parse(event.data);
             console.log('Получено WS-сообщение:', message);
             
@@ -573,6 +633,26 @@
 
             // Если это новое сообщение и оно для *текущего* открытого чата
             if (message.type === 'new_message' && message.chat_id === currentChatUuid) {
+
+                try {
+                // message.keys - это map[user_id -> enc_key]
+                // Нам нужен ключ, зашифрованный для НАС
+                const myEncryptedKey = message.keys[currentUserId]; 
+                
+                const plainText = await cryptoUtils.decryptMessage(
+                    message.content,     // Зашифрованный контент
+                    myEncryptedKey,      // Наш зашифрованный AES-ключ
+                    userPrivateKey       // Наш приватный RSA-ключ
+                );
+                
+                // ЗАМЕНЯЕМ зашифрованный контент на расшифрованный
+                message.content = plainText; 
+
+            } catch (e) {
+                console.error("Ошибка расшифровки WS-сообщения:", e);
+                message.content = "⚠️ Не удалось расшифровать сообщение";
+            }
+                
                 // 1. Рисуем сообщение
                 appendMessageToChat(message, myUserId);
                 
@@ -653,7 +733,7 @@
                     console.error('Неожиданный формат данных:', data);
                     displayChats([]);
                 } else {
-                    displayChats(chats);
+                    await displayChats(chats);
                 }
             } else {
                 console.error('Ошибка при загрузке чатов:', response.status);
@@ -668,7 +748,7 @@
     /**
      * Отображает список чатов (без изменений).
      */
-    function displayChats(chats) {
+    async function displayChats(chats) { // <-- Добавлено async
         if (!chats || chats.length === 0) {
             emptyState.style.display = 'flex';
             chatsList.innerHTML = '';
@@ -678,13 +758,25 @@
         emptyState.style.display = 'none';
         chatsList.innerHTML = '';
         
-        chats.forEach(chat => {
-            const chatCard = document.createElement('div');
-            chatCard.className = 'chat-card';
-
-            chatCard.id = `chat-card-${chat.uuid}`;
+        // Используем Promise.all для параллельной расшифровки
+        const chatPromises = chats.map(async (chat) => {
+            let lastMsgText = "Нет сообщений";
             
-            let lastMsgText = chat.last_message ? chat.last_message : "Нет сообщений";
+            // Сервер должен вернуть 'last_message' (контент) и 'last_message_key'
+            if (chat.last_message && chat.last_message_key) {
+                try {
+                    lastMsgText = await cryptoUtils.decryptMessage(
+                        chat.last_message,
+                        chat.last_message_key,
+                        userPrivateKey
+                    );
+                } catch (e) {
+                    lastMsgText = "🔒 Зашифрованное сообщение";
+                }
+            } else if (chat.last_message) {
+                lastMsgText = "🔒 Зашифрованное сообщение"; // Ключ не пришел
+            }
+            
             if (lastMsgText.length > 35) {
                 lastMsgText = lastMsgText.substring(0, 35) + '...';
             }
@@ -693,7 +785,7 @@
                 ? `<div class="unread-badge">${chat.unread_count}</div>` 
                 : '';
             
-            chatCard.innerHTML = `
+            const chatCardHTML = `
                 <div class="avatar">${chat.name.charAt(0).toUpperCase()}</div>
                 <div class="chat-info">
                     <div class="chat-name">${chat.name}</div>
@@ -704,15 +796,28 @@
                 </div>
             `;
             
-            // Обработчик клика на чат
+            return {
+                uuid: chat.uuid,
+                name: chat.name,
+                html: chatCardHTML
+            };
+        });
+        
+        const renderedChats = await Promise.all(chatPromises);
+        
+        // Теперь вставляем все в DOM
+        renderedChats.forEach(chatData => {
+            const chatCard = document.createElement('div');
+            chatCard.className = 'chat-card';
+            chatCard.id = `chat-card-${chatData.uuid}`;
+            chatCard.innerHTML = chatData.html;
+            
             chatCard.addEventListener('click', () => {
                 document.querySelectorAll('.chat-card').forEach(card => {
                     card.classList.remove('active');
                 });
                 chatCard.classList.add('active');
-                
-                // Загружаем чат
-                loadChat(chat.uuid, chat.name);
+                loadChat(chatData.uuid, chatData.name);
             });
             
             chatsList.appendChild(chatCard);
@@ -723,17 +828,20 @@
      * Загружает ВЫБРАННЫЙ чат.
      * !! ИЗМЕНЕНО: Теперь эта функция также запускает WebSocket.
      */
-    async function loadChat(chatUuid, chatName) {
+    async function loadChat(chatUuid, chatName) { // <-- Добавлено async
         currentChatUuid = chatUuid;
         currentChatName = chatName;
         
         chatTitle.textContent = chatName;
         chatWindow.classList.add('active');
         
-        // 1. Загружаем историю сообщений (один раз)
+        // 1. Загружаем публичные ключи (нужно для отправки)
+        await loadChatPublicKeys(chatUuid);
+
+        // 2. Загружаем историю сообщений (один раз)
         await loadMessages(chatUuid);
         
-        // 2. Подключаемся к WebSocket для real-time обновлений
+        // 3. Подключаемся к WebSocket
         connectWebSocket(chatUuid);
     }
 
@@ -741,13 +849,13 @@
      * Загружает историю сообщений (REST).
      * !! ИЗМЕНЕНО: Использует ID пользователя для 'own' сообщений.
      */
-    async function loadMessages(chatUuid) {
+    async function loadMessages(chatUuid) { // <-- Добавлено async
         if (!chatUuid) {
             messagesContainer.innerHTML = '<div class="message-empty">Не выбран чат</div>';
             return;
         }
         
-        const userId = getUserIdFromToken(); // Получаем ID текущего пользователя
+        // currentUserId уже есть, getUserIdFromToken() не нужен
         
         try {
             const response = await fetch(`/api/v1/chats/get_message/${chatUuid}`, {
@@ -756,14 +864,14 @@
             
             if (response.ok) {
                 const messages = await response.json();
-                displayMessages(messages, userId);
+                // Сервер должен прислать:
+                // [{ content, encrypted_key (для нас), user_id, ... }]
+                await displayMessages(messages, currentUserId); // <-- Добавлено await
             } else {
-                console.error('Ошибка при загрузке сообщений:', response.status);
-                messagesContainer.innerHTML = '<div class="message-empty">Ошибка загрузки сообщений</div>';
+                // ... (обработка ошибок) ...
             }
         } catch (error) {
-            console.error('Ошибка при загрузке сообщений:', error);
-            messagesContainer.innerHTML = '<div class="message-empty">Ошибка загрузки сообщений</div>';
+            // ... (обработка ошибок) ...
         }
     }
 
@@ -771,18 +879,63 @@
      * Отображает ИСТОРИЮ сообщений.
      * !! ИЗМЕНЕНО: Принимает userId.
      */
-    function displayMessages(messages, currentUserId) {
+    async function displayMessages(messages, currentUserId) { // <-- Добавлено async
         messagesContainer.innerHTML = '';
         lastDisplayedDate = null;
         
         if (!messages || messages.length === 0) {
-            messagesContainer.innerHTML = '<div class="message-empty">Сообщений пока нет. Напишите первое сообщение ниже.</div>';
+            messagesContainer.innerHTML = '<div class="message-empty">Сообщений пока нет.</div>';
             return;
         }
         
-        messages.forEach(message => {
-            appendMessageToChat(message, currentUserId); // Используем новую функцию
-        });
+        // Используем цикл for...of, чтобы `await` работал корректно
+        for (const message of messages) {
+            // --- БЛОК РАСШИФРОВКИ ---
+            // Сервер должен прислать `encrypted_key` для *каждого* сообщения
+            if (message.encrypted_key) {
+                try {
+                    const plainText = await cryptoUtils.decryptMessage(
+                        message.content,
+                        message.encrypted_key,
+                        userPrivateKey
+                    );
+                    message.content = plainText; // Заменяем
+                } catch (e) {
+                    console.error("Ошибка расшифровки сообщения из истории:", message.id, e);
+                    message.content = "⚠️ Не удалось расшифровать это сообщение";
+                }
+            } else {
+                // Ключа нет (старое сообщение или ошибка)
+                message.content = "⚠️ Ключ для этого сообщения не найден";
+            }
+            // --- КОНЕЦ БЛОКА ---
+
+            appendMessageToChat(message, currentUserId); // Рисуем расшифрованное
+        }
+
+        // Обновляем превью чата в списке (на всякий случай)
+        if (messages.length > 0) {
+             updateChatListPreview(currentChatUuid, messages[messages.length - 1].content);
+        }
+    }
+
+    function updateChatListPreview(chatId, newText) {
+        const chatCard = document.getElementById(`chat-card-${chatId}`);
+        if (chatCard) {
+            const lastMsgElement = chatCard.querySelector('.last-message');
+            if (lastMsgElement) {
+                let content = newText;
+                if (content.length > 35) {
+                    content = content.substring(0, 35) + '...';
+                }
+                lastMsgElement.textContent = content;
+            }
+            // Убираем счетчик, т.к. чат очевидно прочитан (он открыт)
+            const badge = chatCard.querySelector('.unread-badge');
+            if (badge) {
+                badge.remove();
+            }
+        }
     }
 
     /**
@@ -905,49 +1058,44 @@
      * Отправка сообщения.
      * !! ИЗМЕНЕНО: Теперь использует currentWs.send() вместо fetch().
      */
-    messageForm.addEventListener('submit', async (e) => {
+    messageForm.addEventListener('submit', async (e) => { // <-- Добавлено async
         e.preventDefault();
         
-        const content = messageInput.value.trim();
+        const plainText = messageInput.value.trim();
         
-        // Проверяем, что есть контент И есть активное WS-соединение
-
-        console.warn(content)
-        console.warn(currentWs)
-        console.warn(currentWs.readyState)
-
-        if (!content || !currentWs || currentWs.readyState !== WebSocket.OPEN) {
-            console.warn('Не могу отправить сообщение: нет контента или WS-соединение не готово.');
+        if (!plainText || !currentWs || currentWs.readyState !== WebSocket.OPEN) {
+            console.warn('Не могу отправить сообщение...');
             return;
         }
         
-        // Формируем сообщение по 'manager.go'
+        // --- БЛОК ШИФРОВАНИЯ ---
+        // `chatPublicKeys` был загружен при открытии чата
+        const { content, keys } = await cryptoUtils.encryptMessage(plainText, chatPublicKeys);
+        // --- КОНЕЦ БЛОКА ---
+        
         const message = {
             type: 'new_message',
-            content: content,
-            chat_id: currentChatUuid
+            content: content,      // Зашифрованный контент (B64)
+            chat_id: currentChatUuid,
+            keys: keys             // Map[user_id -> enc_key]
         };
         
-        console.log(message)
-        // Отправляем через WebSocket
+        console.log("Отправка зашифрованного WS-сообщения:", message);
         currentWs.send(JSON.stringify(message));
         
-        // Очищаем поле ввода
         messageInput.value = '';
-        
-        // НЕ НУЖНО вызывать loadMessages()!
-        // Сервер получит сообщение, сохранит в БД,
-        // и транслирует его *обратно нам* (и всем в чате)
-        // через ws.onmessage. Это и есть real-time.
     });
-
+    
     /**
      * Инициализация страницы.
      * !! ИЗМЕНЕНО: Сразу получаем ID пользователя.
      */
-    document.addEventListener('DOMContentLoaded', () => {
-        getUserIdFromToken(); // Получаем и кэшируем ID пользователя при загрузке
-        loadChats();          // Загружаем список чатов
+    document.addEventListener('DOMContentLoaded', async () => { // <-- Добавлено async
+        // 1. Инициализируем ключи и получаем ID пользователя
+        await initCryptoAndUser();
+        
+        // 2. Загружаем список чатов (который теперь будет расшифрован)
+        await loadChats();
     });
 
     // --- Модальные окна (без изменений) ---

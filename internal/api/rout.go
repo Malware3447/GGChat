@@ -87,6 +87,12 @@ func (a *Api) Init() {
 	a.router.Route("/api/v1/users", func(router chi.Router) {
 		router.Post("/verifications", a.apiService.UsersVerifications)
 		router.Post("/register", a.apiService.UsersRegistrations)
+
+		router.Group(func(r chi.Router) {
+			r.Use(MyMDL.JWTMiddleware(a.cfg.Jwt.SecretToken))
+
+			r.Post("/public_key", a.apiChat.SetPublicKey)
+		})
 	})
 
 	a.router.Route("/api/v1/chats", func(router chi.Router) {
@@ -95,9 +101,10 @@ func (a *Api) Init() {
 		router.Post("/new_chat", a.apiChat.NewChat)
 		router.Delete("/delete_chat/{uuid}", a.apiChat.DeleteChat)
 		router.Get("/all_chats", a.apiChat.GetAllChats)
-		router.Post("/new_message", a.apiChat.NewMessage)
 		router.Get("/get_message/{chat_id}", a.apiChat.GetMessage)
 		router.Get("/ws/{chat_id}", a.apiChat.HandleWebSocket)
+
+		router.Get("/public_keys/{chat_id}", a.apiChat.GetChatPublicKeys)
 	})
 }
 

@@ -40,8 +40,8 @@ func (ds *DbService) GetUser(ctx context.Context, username string) (int, error) 
 	return ds.repo.GetUser(ctx, username)
 }
 
-func (ds *DbService) NewMessage(ctx context.Context, chatId uuid.UUID, senderId int, content string) (int, string, error) {
-	return ds.repo.NewMessage(ctx, chatId, senderId, content)
+func (ds *DbService) NewMessage(ctx context.Context, chatId uuid.UUID, senderId int, encryptedContent string, encryptedKeys map[int]string) (int, string, error) {
+	return ds.repo.NewMessage(ctx, chatId, senderId, encryptedContent, encryptedKeys)
 }
 
 func (ds *DbService) GetMessage(ctx context.Context, chatId uuid.UUID, currentUserId int) ([]chats.Message, error) {
@@ -50,4 +50,12 @@ func (ds *DbService) GetMessage(ctx context.Context, chatId uuid.UUID, currentUs
 
 func (ds *DbService) UpdateMessageStatus(ctx context.Context, messageId int, status string) error {
 	return ds.repo.UpdateMessageStatus(ctx, messageId, status)
+}
+
+func (ds *DbService) AddPublicKey(ctx context.Context, userId int, publicKey string) error {
+	return ds.repo.AddPublicKey(ctx, userId, publicKey)
+}
+
+func (ds *DbService) GetPublicKeysForChat(ctx context.Context, chatId uuid.UUID, senderId int) (map[int]string, error) {
+	return ds.repo.GetPublicKeysForChat(ctx, chatId, senderId)
 }

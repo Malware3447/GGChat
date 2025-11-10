@@ -152,50 +152,6 @@ func (a *ApiChats) GetAllChats(w http.ResponseWriter, r *http.Request) {
 	log.Info("Информация о чатах обновлена.")
 }
 
-func (a *ApiChats) NewMessage(w http.ResponseWriter, r *http.Request) {
-	log := logrus.New()
-
-	userId, ok := r.Context().Value("user_id").(int)
-	if !ok {
-		log.Warn("Ошибка получения ID пользователя из контекста")
-		http.Error(w, "Error get chats", http.StatusBadRequest)
-		return
-	}
-
-	body := chats.NewMessageRequest{}
-	err := json.NewDecoder(r.Body).Decode(&body)
-	if err != nil {
-		log.Warn("Неверное тело запроса.")
-		http.Error(w, "Invflid body request", http.StatusBadRequest)
-		return
-	}
-
-	log.Info("Запрос на отправку нового сообщения...")
-
-	ctx := context.Background()
-
-	_, status, err := a.repo.NewMessage(ctx, body.ChatId, userId, body.Content)
-	if err != nil {
-		log.Warn("ошибка добавления сообщения в бд: ", err)
-		http.Error(w, "Error adding message in database", http.StatusBadRequest)
-		return
-	}
-
-	response := chats.Message{
-		Status: status,
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	if err = json.NewEncoder(w).Encode(response); err != nil {
-		log.Warn("Ошибка сервера: ", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-
-	log.Info("Сообщение добавлено")
-}
-
 func (a *ApiChats) GetMessage(w http.ResponseWriter, r *http.Request) {
 	log := logrus.New()
 
@@ -288,14 +244,22 @@ func (a *ApiChats) handleClientMessages(client *MyWS.Client) {
 				continue
 			}
 
-			messageId, status, err := a.repo.NewMessage(context.Background(), chatId, client.UserId, msg.Content)
+			messageId, status, err := a.repo.NewMessage(context.Background(), chatId, client.UserId, msg.Content, msg.Keys)
 			if err != nil {
 				logrus.Error("Ошибка сохранения сообщения:", err)
 				client.Conn.Close()
 				break
 			}
 
-			message := MyWS.Message{
+			chatMembers, err := a.repo.GetPublicKeysForChat(context.Background(), chatId, client.UserId)
+			if err != nil {
+				logrus.Warn("Ошибка получения публичного ключа: ", err)
+				return
+			}
+
+			chatMembers[client.UserId] = ""
+
+			baseMessage := MyWS.Message{
 				Id:        messageId,
 				Type:      "new_message",
 				Content:   msg.Content,
@@ -304,7 +268,7 @@ func (a *ApiChats) handleClientMessages(client *MyWS.Client) {
 				Status:    status,
 				Timestamp: time.Now(),
 			}
-			a.WebsocketManager.SendMessage(message)
+			a.WebsocketManager.SendMessage(baseMessage, msg.Keys)
 
 		case "read_receipt":
 			err := a.repo.UpdateMessageStatus(context.Background(), msg.MessageId, "read")
@@ -319,7 +283,7 @@ func (a *ApiChats) handleClientMessages(client *MyWS.Client) {
 				ChatId: client.ChatId,
 				Status: "read",
 			}
-			a.WebsocketManager.SendMessage(updateMessage)
+			a.WebsocketManager.SendMessage(updateMessage, nil)
 
 		default:
 			logrus.Warnf("Получено сообщение с неизвестным типом: %s", msg.Type)
@@ -350,4 +314,37 @@ func (a *ApiChats) writeMessagesToClient(client *MyWS.Client) {
 	}
 
 	client.Conn.WriteMessage(websocket.CloseMessage, []byte{})
+}
+
+func (a *ApiChats) SetPublicKey(w http.ResponseWriter, r *http.Request) {
+	userId, _ := r.Context().Value("user_id").(int)
+
+	var body struct {
+		PublicKey string `json:"public_key"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "Invalid body", http.StatusBadRequest)
+		return
+	}
+
+	err := a.repo.AddPublicKey(context.Background(), userId, body.PublicKey)
+	if err != nil {
+		logrus.Warn("Ошибка добавления публичного ключа: ", err)
+		http.Error(w, "Error adding public key", http.StatusBadRequest)
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
+func (a *ApiChats) GetChatPublicKeys(w http.ResponseWriter, r *http.Request) {
+	userId, _ := r.Context().Value("user_id").(int)
+	chatIdStr := chi.URLParam(r, "chat_id")
+	chatId, _ := uuid.Parse(chatIdStr)
+
+	keys, err := a.repo.GetPublicKeysForChat(context.Background(), chatId, userId)
+	if err != nil {
+		logrus.Warn("Ошибка получения публичного ключа: ", err)
+		http.Error(w, "Error get public key", http.StatusBadRequest)
+	}
+
+	json.NewEncoder(w).Encode(keys)
 }
