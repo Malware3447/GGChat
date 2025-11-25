@@ -204,7 +204,10 @@ func (repo *RepositoryPg) GetAllChats(ctx context.Context, UserId int) ([]chats.
 	const q = `
 		SELECT 
 			c.uuid, 
-			c.name,
+			(select username from users
+			where id = (SELECT user_id FROM chat_nembers
+			where chat_id = c.uuid and user_id != $1)
+			) AS chat_name,
 			(
 				SELECT COUNT(*)
 				FROM message_status ms

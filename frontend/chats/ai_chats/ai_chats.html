@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GGChat — Ваши чаты</title>
+    <title>GGChat — Чаты с ИИ</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
 
     <style>
@@ -145,7 +145,7 @@
         
         /* Правая панель - окно чата */
         .chat-window {
-            width: 66.66%;
+            width: calc(100% - 360px); /* Учитываем ширину навбара и сайдбара */
             display: flex;
             flex-direction: column;
             height: 100vh;
@@ -402,13 +402,13 @@
 <div class="container">
     <!-- Навигационный бар -->
     <div class="nav-bar">
-        <div class="nav-icon active" id="user-chats-icon" title="Чаты с пользователями">
+        <div class="nav-icon" id="user-chats-icon" title="Чаты с пользователями">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M17 21V19C17 17.9391 16.5786 16.9217 15.8284 16.1569C15.0783 15.392 14.0591 14.9391 13 14.9H9C7.94087 14.9 6.92172 15.392 6.17157 16.1569C5.42143 16.9217 5 17.9391 5 19V21" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                 <path d="M12 11C14.2091 11 16 9.20914 16 7C16 4.79086 14.2091 3 12 3C9.79086 3 8 4.79086 8 7C8 9.20914 9.79086 11 12 11Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
         </div>
-        <div class="nav-icon" id="ai-chats-icon" title="Чаты с ИИ агентом">
+        <div class="nav-icon active" id="ai-chats-icon" title="Чаты с ИИ агентом">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M12 2L15.09 8.26L22 9L17 14L18.18 21.02L12 17.77L5.82 21.02L7 14L2 9L8.91 8.26L12 2Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
@@ -430,8 +430,8 @@
         </div>
         
         <section id="empty" class="empty-state" style="display: none;">
-            <h2>Пока у вас нет чатов</h2>
-            <p>Нажмите «Создать чат», чтобы начать новый разговор. Вы сможете добавить собеседников позже.</p>
+            <h2>Пока у вас нет чатов с ИИ</h2>
+            <p>Нажмите «Создать чат», чтобы начать новый разговор с ИИ агентом.</p>
         </section>
     </div>
     
@@ -463,15 +463,20 @@
 <!-- Modal create chat -->
 <div id="modal-backdrop" class="modal-backdrop">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="create-title">
-        <div class="modal-title" id="create-title">Новый чат</div>
+        <div class="modal-title" id="create-title">Новый чат с ИИ</div>
         <form id="create-form">
                     <div class="input-group">
                         <input id="chat-name" type="text" placeholder=" " autocomplete="off" required>
                         <label for="chat-name">Название чата</label>
                     </div>
                     <div class="input-group">
-                        <input id="user-name" type="text" placeholder=" " autocomplete="off" required>
-                        <label for="user-name">Имя пользователя</label>
+                        <select id="ai-agent" required>
+                            <option value="">Выберите ИИ агента</option>
+                            <option value="general">Общий помощник</option>
+                            <option value="tech-support">Техническая поддержка</option>
+                            <option value="creative">Креативный помощник</option>
+                        </select>
+                        <label for="ai-agent">ИИ агент</label>
                     </div>
                     <div class="modal-actions">
                         <button type="button" id="cancel-create" class="btn secondary">Отмена</button>
@@ -497,7 +502,6 @@
             </div>
         </div>
 
-        <script src="crypto.js"></script>
         <script>
     // --- Элементы DOM ---
     const openCreateBtn = document.getElementById('open-create');
@@ -505,7 +509,7 @@
     const cancelCreateBtn = document.getElementById('cancel-create');
     const createForm = document.getElementById('create-form');
     const chatNameInput = document.getElementById('chat-name');
-    const userNameInput = document.getElementById('user-name');
+    const aiAgentSelect = document.getElementById('ai-agent');
     const emptyState = document.getElementById('empty');
     const chatsList = document.getElementById('chats-list');
     const chatWindow = document.getElementById('chat-window');
@@ -517,6 +521,10 @@
     const settingsModalBackdrop = document.getElementById('settings-modal-backdrop');
     const closeSettingsBtn = document.getElementById('close-settings');
     const deleteChatBtn = document.getElementById('delete-chat');
+    
+    // --- Навигационные иконки ---
+    const userChatsIcon = document.getElementById('user-chats-icon');
+    const aiChatsIcon = document.getElementById('ai-chats-icon');
 
     // --- Управление состоянием ---
     let currentChatUuid = null;
@@ -755,11 +763,11 @@
     // --- Логика работы с чатами ---
 
     /**
-     * Загружает список чатов (REST). Это остается как было.
+     * Загружает список чатов с ИИ (REST).
      */
-    async function loadChats() {
+    async function loadAIChats() {
         try {
-            const response = await fetch('/api/v1/chats/all_chats', {
+            const response = await fetch('/api/v1/chats/ai_chats', {
                 credentials: 'include'
             });
             
@@ -776,24 +784,24 @@
                 
                 if (!chats) {
                     console.error('Неожиданный формат данных:', data);
-                    displayChats([]);
+                    displayAIChats([]);
                 } else {
-                    await displayChats(chats);
+                    await displayAIChats(chats);
                 }
             } else {
                 console.error('Ошибка при загрузке чатов:', response.status);
-                displayChats([]);
+                displayAIChats([]);
             }
         } catch (error) {
             console.error('Ошибка при загрузке чатов:', error);
-            displayChats([]);
+            displayAIChats([]);
         }
     }
 
     /**
-     * Отображает список чатов (без изменений).
+     * Отображает список чатов с ИИ.
      */
-    async function displayChats(chats) { // <-- Добавлено async
+    async function displayAIChats(chats) { // <-- Добавлено async
         if (!chats || chats.length === 0) {
             emptyState.style.display = 'flex';
             chatsList.innerHTML = '';
@@ -1139,45 +1147,17 @@
         // 1. Инициализируем ключи и получаем ID пользователя
         await initCryptoAndUser();
         
-        // 2. Загружаем список чатов (который теперь будет расшифрован)
-        await loadChats();
+        // 2. Загружаем список чатов с ИИ (который теперь будет расшифрован)
+        await loadAIChats();
     });
 
     // --- Навигация между типами чатов ---
-    document.getElementById('user-chats-icon').addEventListener('click', function() {
-        // Переключение активной иконки
-        document.getElementById('user-chats-icon').classList.add('active');
-        document.getElementById('ai-chats-icon').classList.remove('active');
-        
-        // Здесь будет логика загрузки чатов с пользователями
-        loadChats();
+    userChatsIcon.addEventListener('click', function() {
+        // Перенаправление на страницу чатов с пользователями
+        window.location.href = '../all_chats/allchat.html';
     });
     
-    document.getElementById('ai-chats-icon').addEventListener('click', function() {
-        // Переключение активной иконки
-        document.getElementById('ai-chats-icon').classList.add('active');
-        document.getElementById('user-chats-icon').classList.remove('active');
-        
-        // Здесь будет логика загрузки чатов с ИИ
-        loadAIChats();
-    });
-    
-    // Заглушка для загрузки чатов с ИИ
-    async function loadAIChats() {
-        // Очистка списка чатов
-        chatsList.innerHTML = '';
-        
-        // Отображение сообщения, что чаты с ИИ будут позже
-        const aiChatsPlaceholder = document.createElement('div');
-        aiChatsPlaceholder.className = 'empty-state';
-        aiChatsPlaceholder.innerHTML = `
-            <h2>Чаты с ИИ агентом</h2>
-            <p>Эта функция находится в разработке. Скоро вы сможете общаться с нашими ИИ агентами.</p>
-        `;
-        chatsList.appendChild(aiChatsPlaceholder);
-    }
-    
-    // --- Модальные окна (без изменений) ---
+    // --- Модальные окна ---
     
     // Создание чата
     openCreateBtn.addEventListener('click', () => {
@@ -1198,15 +1178,15 @@
     createForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const chatName = chatNameInput.value.trim();
-        const userName = userNameInput.value.trim();
-        if (!chatName || !userName) return;
+        const aiAgent = aiAgentSelect.value;
+        if (!chatName || !aiAgent) return;
         
         try {
-            const response = await fetch('/api/v1/chats/new_chat', {
+            const response = await fetch('/api/v1/chats/new_ai_chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
-                body: JSON.stringify({ chat_name: chatName, user_name: userName })
+                body: JSON.stringify({ chat_name: chatName, ai_agent: aiAgent })
             });
             
             console.log(response)
@@ -1218,7 +1198,7 @@
             
             if (response.ok) {
                 closeCreateModal();
-                await loadChats(); // Обновляем список чатов
+                await loadAIChats(); // Обновляем список чатов
             } else {
                 console.error('Ошибка при создании чата:', response.status);
             }
@@ -1270,7 +1250,7 @@
                     currentWs.close();
                     currentWs = null;
                 }
-                await loadChats(); // Обновляем список
+                await loadAIChats(); // Обновляем список
             } else {
                 console.error('Ошибка при удалении чата:', response.status);
                 alert('Ошибка при удалении чата');
