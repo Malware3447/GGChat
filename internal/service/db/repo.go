@@ -4,6 +4,7 @@ import (
 	"GGChat/internal/db"
 	"GGChat/internal/models/chats"
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -58,4 +59,24 @@ func (ds *DbService) AddPublicKey(ctx context.Context, userId int, publicKey str
 
 func (ds *DbService) GetPublicKeysForChat(ctx context.Context, chatId uuid.UUID, senderId int) (map[int]string, error) {
 	return ds.repo.GetPublicKeysForChat(ctx, chatId, senderId)
+}
+
+func (ds *DbService) CreateChatAI(ctx context.Context, UserID int, Title string) (*chats.ChatAI, error) {
+	return ds.repo.CreateChatAI(ctx, UserID, Title)
+}
+
+func (ds *DbService) GetAllChatsAI(ctx context.Context, UserID int) ([]chats.ChatAI, error) {
+	return ds.repo.GetAllChatsAI(ctx, UserID)
+}
+
+func (ds *DbService) DeleteChatAI(ctx context.Context, ID int) error {
+	return ds.repo.DeleteChatAI(ctx, ID)
+}
+
+func (ds *DbService) CreateMessage(ctx context.Context, ChatID int, SenderID string, Content string) (*chats.MessageAI, error) {
+	return ds.repo.CreateMessage(ctx, ChatID, SenderID, Content)
+}
+
+func (ds *DbService) GetMessageInChat(ctx context.Context, ChatID int, Limit int, FromMessageDate *time.Time) ([]chats.MessageAI, error) {
+	return ds.repo.GetMessageInChat(ctx, ChatID, Limit, FromMessageDate)
 }

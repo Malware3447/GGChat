@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -217,13 +218,11 @@ func (repo *RepositoryPg) GetAllChats(ctx context.Context, UserId int) ([]chats.
 				AND ms.status != 'read'       
 				AND m.sender_id != $1         
 			) AS unread_count,
-			-- Используем LATERAL JOIN для получения последнего сообщения и его ключа
 			lm.content AS last_message,
 			lmk.encrypted_key AS last_message_key
 		FROM chats c
 		JOIN chat_nembers cn ON c.uuid = cn.chat_id
 		
-		-- Находим последнее сообщение (lm)
 		LEFT JOIN LATERAL (
 			SELECT m.id, m.content, m.sent_at
 			FROM message m
@@ -232,7 +231,6 @@ func (repo *RepositoryPg) GetAllChats(ctx context.Context, UserId int) ([]chats.
 			LIMIT 1
 		) lm ON true
 		
-		-- Находим ключ (lmk) ДЛЯ ЭТОГО пользователя и ДЛЯ ЭТОГО сообщения
 		LEFT JOIN LATERAL (
 			SELECT mk.encrypted_key
 			FROM message_keys mk
@@ -241,7 +239,6 @@ func (repo *RepositoryPg) GetAllChats(ctx context.Context, UserId int) ([]chats.
 		) lmk ON true
 		
 		WHERE cn.user_id = $1
-		-- Сортируем по дате последнего сообщения
 		ORDER BY lm.sent_at DESC NULLS LAST;
 	`
 
@@ -254,7 +251,6 @@ func (repo *RepositoryPg) GetAllChats(ctx context.Context, UserId int) ([]chats.
 	var Chats []chats.Chat
 	for rows.Next() {
 		var chat chats.Chat
-		// Теперь сканируем 5 полей, включая новое LastMessageKey
 		err := rows.Scan(&chat.Uuid, &chat.Name, &chat.UnreadCount, &chat.LastMessage, &chat.LastMessageKey)
 		if err != nil {
 			return nil, fmt.Errorf("ошибка при сканировании данных чата: %w", err)
@@ -480,4 +476,109 @@ func (repo *RepositoryPg) GetPublicKeysForChat(ctx context.Context, chatId uuid.
 		}
 	}
 	return keys, nil
+}
+
+func (repo *RepositoryPg) CreateChatAI(ctx context.Context, UserID int, Title string) (*chats.ChatAI, error) {
+	const q = `
+		INSERT INTO ai_chats (user_id, title)
+		VALUES ($1, $2)
+		RETURNING id, user_id, title, created_at, updated_at
+	`
+	var chat chats.ChatAI
+	err := repo.db.QueryRow(ctx, q, UserID, Title).Scan(
+		&chat.Id,
+		&chat.UserID,
+		&chat.Title,
+		&chat.CreatedAt,
+		&chat.UpdatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &chat, nil
+}
+
+func (repo *RepositoryPg) GetAllChatsAI(ctx context.Context, UserID int) ([]chats.ChatAI, error) {
+	const q = `
+		SELECT * FROM ai_chats
+		WHERE user_id = $1
+	`
+
+	rows, err := repo.db.Query(ctx, q, UserID)
+	if err != nil {
+		return nil, fmt.Errorf("не удалось получить список чатов пользователя: %w", err)
+	}
+	defer rows.Close()
+
+	var Chats []chats.ChatAI
+	for rows.Next() {
+		var chat chats.ChatAI
+		err := rows.Scan(&chat.Id, &chat.UserID, &chat.Title, &chat.CreatedAt, &chat.UpdatedAt)
+		if err != nil {
+			return nil, fmt.Errorf("ошибка при сканировании данных чата: %w", err)
+		}
+		Chats = append(Chats, chat)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("ошибка при итерации по результатам: %w", err)
+	}
+
+	return Chats, nil
+}
+
+func (repo *RepositoryPg) DeleteChatAI(ctx context.Context, ID int) error {
+	const q = `DELETE FROM ai_chats WHERE id = $1`
+	_, err := repo.db.Exec(ctx, q, ID)
+	return err
+}
+
+func (repo *RepositoryPg) CreateMessage(ctx context.Context, ChatID int, SenderID string, Content string) (*chats.MessageAI, error) {
+	const q = `
+		INSERT INTO ai_message (chat_id, content, sender_id) VALUES ($1, $2, $3)
+		RETURNING id, chat_id, content, sender_id, sent_at
+	`
+	var message chats.MessageAI
+	err := repo.db.QueryRow(ctx, q, ChatID, Content, SenderID).Scan(
+		&message.Id,
+		&message.ChatID,
+		&message.Content,
+		&message.SenderType,
+		&message.SentAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &message, nil
+}
+
+func (repo *RepositoryPg) GetMessageInChat(ctx context.Context, ChatID int, Limit int, FromMessageDate *time.Time) ([]chats.MessageAI, error) {
+	const q = `
+	SELECT id, chat_id, content, sender_id, created_at
+      FROM messages
+      WHERE chat_id = $1 AND created_at > $2
+      ORDER BY created_at DESC
+      LIMIT $3
+	`
+	rows, err := repo.db.Query(ctx, q, ChatID, FromMessageDate, Limit)
+	if err != nil {
+		return nil, err
+	}
+	var Messages []chats.MessageAI
+	for rows.Next() {
+		var message chats.MessageAI
+		err := rows.Scan(
+			&message.Id,
+			&message.ChatID,
+			&message.Content,
+			&message.SenderType,
+			&message.SentAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		Messages = append(Messages, message)
+	}
+
+	return Messages, nil
 }

@@ -11,7 +11,7 @@ import (
 )
 
 func main() {
-	connString := "postgres://demo:demo@localhost:5432/test-task-two"
+	connString := "postgres://demo:demo@localhost:5432/ggchat"
 	pool, err := pgxpool.New(context.Background(), connString)
 	if err != nil {
 		log.Fatalf("Unable to connect to database: %v", err)

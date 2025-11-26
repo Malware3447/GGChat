@@ -8,7 +8,7 @@ tasks:
   migrate:run:
     desc: Запуск миграций
     cmds:
-      - go run ./cmd/migrate/run/pg/main.go -config=./config/local.yml
+      - go run ./cmd/migrations/main.go
 
   db:up:
     desc: Запуск PostgreSQL в Docker

@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"time"
 
 	"GGChat/internal/models/chats"
 
@@ -22,4 +23,11 @@ type PgRepository interface {
 	UpdateMessageStatus(ctx context.Context, messageId int, status string) error
 	AddPublicKey(ctx context.Context, userId int, publicKey string) error
 	GetPublicKeysForChat(ctx context.Context, chatId uuid.UUID, senderId int) (map[int]string, error)
+
+	CreateChatAI(ctx context.Context, UserID int, Title string) (*chats.ChatAI, error)
+	GetAllChatsAI(ctx context.Context, UserID int) ([]chats.ChatAI, error)
+	DeleteChatAI(ctx context.Context, ID int) error
+
+	CreateMessage(ctx context.Context, ChatID int, SenderID string, Content string) (*chats.MessageAI, error)
+	GetMessageInChat(ctx context.Context, ChatID int, Limit int, FromMessageDate *time.Time) ([]chats.MessageAI, error)
 }
