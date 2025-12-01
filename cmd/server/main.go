@@ -2,7 +2,7 @@ package main
 
 import (
 	"GGChat/internal/api"
-	"GGChat/internal/api/crut"
+	"GGChat/internal/api/endpoint"
 	"GGChat/internal/config"
 	database "GGChat/internal/db"
 	"GGChat/internal/service/db"
@@ -38,10 +38,10 @@ func main() {
 
 	jwt := api.NewJwt(cfg)
 
-	crutApi := crut.NewCrut(pgService, jwt)
+	crutApi := endpoint.NewCrut(pgService, jwt)
 	ws := websocket.NewManager()
 	go ws.Run()
-	chat := crut.NewApiChats(pgService, ws)
+	chat := endpoint.NewApiChats(pgService, ws)
 
 	router := api.NewApi(crutApi, chat, cfg)
 

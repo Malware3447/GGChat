@@ -1,7 +1,7 @@
 package api
 
 import (
-	"GGChat/internal/api/crut"
+	"GGChat/internal/api/endpoint"
 	"GGChat/internal/config"
 	"bufio"
 	"fmt"
@@ -17,8 +17,8 @@ import (
 
 type Api struct {
 	router     *chi.Mux
-	apiService *crut.ApiVerifications
-	apiChat    *crut.ApiChats
+	apiService *endpoint.ApiVerifications
+	apiChat    *endpoint.ApiChats
 	cfg        *config.Config
 }
 
@@ -45,7 +45,7 @@ func (rw *responseWrapper) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	return nil, nil, fmt.Errorf("responseWrapper: ResponseWriter не реализует http.Hijacker")
 }
 
-func NewApi(apiService *crut.ApiVerifications, apiChat *crut.ApiChats, cfg *config.Config) *Api {
+func NewApi(apiService *endpoint.ApiVerifications, apiChat *endpoint.ApiChats, cfg *config.Config) *Api {
 	return &Api{
 		router:     nil,
 		apiService: apiService,

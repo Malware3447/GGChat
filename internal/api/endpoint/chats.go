@@ -1,4 +1,4 @@
-package crut
+package endpoint
 
 import (
 	"GGChat/internal/models/chats"
