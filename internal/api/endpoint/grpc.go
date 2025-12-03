@@ -28,7 +28,7 @@ func NewAIChats(repo *db.DbService, wsManager *MyWS.Manager) *gRPCMethod {
 }
 
 func (a *gRPCMethod) DocGenerator(UserData string, DocPath string) (string, error) {
-	conn, err := grpc.Dial("1033", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.Dial("localhost:1034", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("не удалось подключиться: %v", err)
 	}
@@ -58,7 +58,7 @@ func (a *gRPCMethod) DocGenerator(UserData string, DocPath string) (string, erro
 }
 
 func (a *gRPCMethod) ConPDF(DoneDocPath string) (string, error) {
-	conn, err := grpc.Dial("1033", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.Dial("localhost:1033", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("не удалось подключиться: %v", err)
 	}

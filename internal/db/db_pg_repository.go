@@ -30,4 +30,7 @@ type PgRepository interface {
 
 	CreateMessage(ctx context.Context, ChatID int, SenderID string, Content string) (*chats.MessageAI, error)
 	GetMessageInChat(ctx context.Context, ChatID int, Limit int, FromMessageDate *time.Time) ([]chats.MessageAI, error)
+
+	AddPathDoc(ctx context.Context, ChatId int, Path, Name string) error
+	GetPathDoc(ctx context.Context, ChatId int) (string, string, error)
 }

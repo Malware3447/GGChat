@@ -1357,9 +1357,25 @@
             
             if (response.ok) {
                 const messages = await response.json();
+
+                const docResponse = await fetch(`/api/v1/ai_chats/download_doc/${chatId}`, {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+
+                const hasDocument = docResponse.ok;
+            
+                if (hasDocument && messages.length > 0) {
+                    for (let i = messages.length - 1; i >= 0; i--) {
+                        if (messages[i].sender_type === "ai") {
+                            messages[i].has_document = true;
+                            break;
+                        }
+                    }
+                }
+
                 await displayAIMessages(messages);
             } else {
-                // Не показываем ошибку при автообновлении
                 if (!window.aiMessagesRefreshInterval) {
                     messagesContainer.innerHTML = '<div class="message-empty">Ошибка загрузки сообщений</div>';
                 }
@@ -1412,7 +1428,6 @@
             messages.forEach(message => {
                 appendAIMessageToChat(message);
             });
-            
             // Обновляем превью чата в списке
             if (messages.length > 0) {
                 updateAIChatListPreview(currentChatUuid, messages[messages.length - 1].content);
@@ -1488,16 +1503,58 @@
             statusDiv.className = 'message-status status-read';
             messageElement.appendChild(statusDiv);
         }
+        if (message.sender_type === "ai" && message.has_document) {
+            const contentContainer = document.createElement('div');
+            contentContainer.className = 'message-content';
+
+            if (message.content) {
+                const textContent = document.createElement('div');
+                textContent.textContent = message.content;
+                contentContainer.appendChild(textContent);
+            }     
+
+            const downloadLink = document.createElement('a');
+            downloadLink.href = `/api/v1/ai_chats/download_doc/${currentChatUuid}`;
+            downloadLink.textContent = 'Скачать сгенерированный документ (PDF)';
+            downloadLink.className = 'download-link';
+            downloadLink.target = '_blank';
+            downloadLink.style.display = 'inline-block';
+            downloadLink.style.marginTop = '10px';
+            downloadLink.style.padding = '8px 12px';
+            downloadLink.style.backgroundColor = '#e8f5e9';
+            downloadLink.style.border = '1px solid #c8e6c9';
+            downloadLink.style.borderRadius = '8px';
+            downloadLink.style.color = '#2e7d32';
+            downloadLink.style.fontWeight = '600';
+            downloadLink.style.textDecoration = 'none';
+            downloadLink.style.transition = 'all 0.2s ease';
+
+            downloadLink.addEventListener('mouseenter', function() {
+                this.style.backgroundColor = '#c8e6c9';
+                this.style.transform = 'translateY(-1px)';
+                this.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+            });
+
+            downloadLink.addEventListener('mouseleave', function() {
+                this.style.backgroundColor = '#e8f5e9';
+                this.style.transform = 'translateY(0)';
+                this.style.boxShadow = 'none';
+            });
         
-        // Используем textContent для безопасности
-        const content = document.createElement('div');
-        content.className = 'message-content';
-        content.textContent = message.content;
-        messageElement.appendChild(content);
-        
+            const icon = document.createElement('span');
+            icon.innerHTML = ' 📄';
+            downloadLink.prepend(icon);
+            
+            contentContainer.appendChild(downloadLink);
+            messageElement.appendChild(contentContainer);
+        } else {
+            const content = document.createElement('div');
+            content.className = 'message-content';
+            content.textContent = message.content;
+            messageElement.appendChild(content);
+        }
         messagesContainer.appendChild(messageElement);
         
-        // Прокручиваем к последнему сообщению
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
     

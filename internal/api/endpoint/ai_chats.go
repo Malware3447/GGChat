@@ -4,12 +4,13 @@ import (
 	"GGChat/internal/models/chats"
 	"GGChat/internal/service/db"
 	MyWS "GGChat/internal/websocket"
-	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -202,20 +203,25 @@ func (a *AIApiChats) GenerateAIResponse(chatID int, userMessage string) {
 		})
 	}
 
-	aiResponse, path, match, err := GenerateAIResponse(userMessage, history)
+	aiResponse, docName, match, err := GenerateAIResponse(userMessage, history)
 	if err != nil {
 		logrus.Warn("Ошибка генерации AI ответа: ", err)
 		aiResponse = "Извините, произошла ошибка при обработке запроса."
 	}
 
-	if path != "" {
-		doneDocUrl, err := a.gm.DocGenerator(match, path)
+	if docName != "" {
+		doneDocUrl, err := a.gm.DocGenerator(match, docName)
 		if err != nil {
 			return
 		}
 
-		_, err = a.gm.ConPDF(doneDocUrl)
+		path, err := a.gm.ConPDF(doneDocUrl)
 		if err != nil {
+			return
+		}
+		err = a.repo.AddPathDoc(context.Background(), chatID, path, match)
+		if err != nil {
+			logrus.Warn("ошибка добавления пути к документу: ", err)
 			return
 		}
 
@@ -245,7 +251,7 @@ func GenerateAIResponse(userMessage string, history []Message) (string, string, 
 		logrus.Warn("Match document error:", err)
 	}
 
-	docTags, path, err := collectingTags(docNum)
+	docTags, docName, err := collectingTags(docNum)
 	if err != nil {
 		logrus.Warn("Collecting tags error:", err)
 	}
@@ -282,46 +288,46 @@ func GenerateAIResponse(userMessage string, history []Message) (string, string, 
 
 	if orProvider, ok := provider.(OpenRouterProvider); ok {
 		httpReq.Header.Set("Authorization", "Bearer "+orProvider.APIKey)
-		httpReq.Header.Set("HTTP-Referer", "https://github.com")
-		httpReq.Header.Set("X-Title", "AI Chat Assistant")
 	}
 
 	client := &http.Client{}
 	resp, err := client.Do(httpReq)
 	if err != nil {
+		fmt.Println("Error calling provider:", err)
 		return "", "", "", err
 	}
 	defer resp.Body.Close()
 
-	bodyScanner := bufio.NewScanner(resp.Body)
-	var content strings.Builder
-	for bodyScanner.Scan() {
-		line := strings.TrimSpace(bodyScanner.Text())
-		if line == "" {
-			continue
-		}
-
-		streamContent, done, err := provider.ParseStreamResponse(line)
-		if err != nil {
-			continue
-		}
-
-		if streamContent != "" {
-			fmt.Print(streamContent)
-			content.WriteString(streamContent)
-		}
-
-		if done {
-			break
-		}
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", "", "", err
 	}
-	contentStr := content.String()
 
+	// Try to parse as OpenRouter format
+	var openRouterResp struct {
+		Choices []struct {
+			Message Message `json:"message"`
+		} `json:"choices"`
+	}
+
+	var content string
+	if err := json.Unmarshal(bodyBytes, &openRouterResp); err == nil && len(openRouterResp.Choices) > 0 {
+		content = openRouterResp.Choices[0].Message.Content
+	} else {
+		var response Response
+		if err := json.Unmarshal(bodyBytes, &response); err != nil {
+			return "", "", "", fmt.Errorf("failed to parse response for document %v", err)
+		}
+		content = response.Message.Content
+	}
+
+	// Try to extract and parse JSON
 	re := regexp.MustCompile(`(?s)\{.*\}`)
-	match := re.FindString(contentStr)
+	match := re.FindString(content)
 	if match != "" {
 		var result map[string]interface{}
 		if json.Unmarshal([]byte(match), &result) == nil {
+			// Check if all fields are present and non-empty
 			allPresent := true
 			for _, field := range docTags {
 				if val, ok := result[field]; !ok || val == "" {
@@ -330,32 +336,41 @@ func GenerateAIResponse(userMessage string, history []Message) (string, string, 
 				}
 			}
 			if allPresent {
-				fmt.Println("собранная информация: ", match)
-				return "", path, match, nil
+				fmt.Println("собранная информация:", match)
+				return "", docName, match, nil
 			}
 		}
 	}
 
-	bodyBytes, err := io.ReadAll(resp.Body)
+	return content, "", "", nil
+}
+
+func (a *AIApiChats) DownloadDocument(w http.ResponseWriter, r *http.Request) {
+	chatIDStr := chi.URLParam(r, "chat_id")
+	chatID, err := strconv.Atoi(chatIDStr)
 	if err != nil {
-		return "", "", "", err
+		logrus.Warn("Ошибка конвертации ID чата: ", err)
+		http.Error(w, "Неверный ID чата", http.StatusBadRequest)
+		return
 	}
 
-	var openRouterResp struct {
-		Choices []struct {
-			Message Message `json:"message"`
-		} `json:"choices"`
+	path, name, err := a.repo.GetPathDoc(r.Context(), chatID)
+	if err != nil {
+		logrus.Errorf("Ошибка получения пути документа для ChatID %d: %v", chatID, err)
+		http.Error(w, "Документ не найден или недоступен", http.StatusNotFound)
+		return
 	}
 
-	if err := json.Unmarshal(bodyBytes, &openRouterResp); err == nil && len(openRouterResp.Choices) > 0 {
-		return openRouterResp.Choices[0].Message.Content, "", "", nil
+	fullPath := filepath.Join(path, name)
+
+	if _, err := os.Stat(fullPath); os.IsNotExist(err) {
+		logrus.Errorf("Файл не найден на диске по пути: %s", fullPath)
+		http.Error(w, "Файл не найден на сервере", http.StatusNotFound)
+		return
 	}
 
-	var response Response
-	if err := json.Unmarshal(bodyBytes, &response); err != nil {
-		logrus.Warnf("Failed to parse response body: %s", string(bodyBytes))
-		return "", "", "", fmt.Errorf("ошибка при разборе JSON ответа: %w", err)
-	}
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", name))
+	w.Header().Set("Content-Type", "application/pdf")
 
-	return response.Message.Content, "", "", nil
+	http.ServeFile(w, r, fullPath)
 }

@@ -64,7 +64,7 @@ func (a *Api) Init() {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			clientOrigin := r.Header.Get("Origin")
 			w.Header().Set("Access-Control-Allow-Origin", clientOrigin)
-			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, HEAD")
 			w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
 			w.Header().Set("Access-Control-Allow-Credentials", "true")
 
@@ -110,6 +110,7 @@ func (a *Api) Init() {
 		router.Post("/new_message", a.apiAIChat.NewMessage)
 		router.Delete("/delete_chat/{id}", a.apiAIChat.DeleteChatAI)
 		router.Get("/messages/{chat_id}", a.apiAIChat.GetMessages)
+		router.Get("/download_doc/{chat_id}", a.apiAIChat.DownloadDocument)
 	})
 }
 

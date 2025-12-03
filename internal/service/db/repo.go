@@ -80,3 +80,11 @@ func (ds *DbService) CreateMessage(ctx context.Context, ChatID int, SenderID str
 func (ds *DbService) GetMessageInChat(ctx context.Context, ChatID int, Limit int, FromMessageDate *time.Time) ([]chats.MessageAI, error) {
 	return ds.repo.GetMessageInChat(ctx, ChatID, Limit, FromMessageDate)
 }
+
+func (ds *DbService) AddPathDoc(ctx context.Context, ChatId int, Path, Name string) error {
+	return ds.repo.AddPathDoc(ctx, ChatId, Path, Name)
+}
+
+func (ds *DbService) GetPathDoc(ctx context.Context, ChatId int) (string, string, error) {
+	return ds.repo.GetPathDoc(ctx, ChatId)
+}

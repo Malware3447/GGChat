@@ -85,7 +85,7 @@ func (p OpenRouterProvider) ParseStreamResponse(line string) (string, bool, erro
 }
 
 func getProvider() Provider {
-	const apiKey = "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"
+	const apiKey = ""
 	const model = "x-ai/grok-4.1-fast:free"
 	return OpenRouterProvider{APIKey: apiKey, Model: model}
 }
@@ -376,7 +376,7 @@ Respond with ONLY the number (1-%d) of the best matching document. Do not includ
 }
 
 var docNumbers map[int]string = map[int]string{
-	1: "claim.txt",
+	1: "claim",
 }
 
 var urlTemplateStorage = "C:\\Users\\salam\\quattroProject\\containers\\"
@@ -387,7 +387,7 @@ func collectingTags(docNum int) ([]string, string, error) {
 		return nil, "", fmt.Errorf("document with number %s not found", docNum)
 	}
 
-	fullPath := urlTemplateStorage + docName
+	fullPath := urlTemplateStorage + docName + ".txt"
 
 	content, err := os.ReadFile(fullPath)
 	if err != nil {
@@ -412,5 +412,5 @@ func collectingTags(docNum int) ([]string, string, error) {
 		}
 	}
 
-	return tags, fullPath, nil
+	return tags, docName, nil
 }

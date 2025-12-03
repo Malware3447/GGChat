@@ -500,7 +500,7 @@ func (repo *RepositoryPg) CreateChatAI(ctx context.Context, UserID int, Title st
 
 func (repo *RepositoryPg) GetAllChatsAI(ctx context.Context, UserID int) ([]chats.ChatAI, error) {
 	const q = `
-		SELECT * FROM ai_chats
+		SELECT id, user_id, title, created_at, updated_at FROM ai_chats
 		WHERE user_id = $1
 	`
 
@@ -581,4 +581,26 @@ func (repo *RepositoryPg) GetMessageInChat(ctx context.Context, ChatID int, Limi
 	}
 
 	return Messages, nil
+}
+
+func (repo *RepositoryPg) AddPathDoc(ctx context.Context, ChatId int, Path, Name string) error {
+	fmt.Println("ПРОХОД", ChatId)
+	const q = `
+		UPDATE ai_chats
+		SET donedocpath = $1, finalfilename = $2
+		WHERE id = $3
+	`
+	_, err := repo.db.Exec(ctx, q, Path, Name, ChatId)
+	return err
+}
+
+func (repo *RepositoryPg) GetPathDoc(ctx context.Context, ChatId int) (string, string, error) {
+	const q = `
+		SELECT donedocpath, finalfilename
+		FROM ai_chats
+		WHERE id = $1
+	`
+	var Path, Name string
+	err := repo.db.QueryRow(ctx, q, ChatId).Scan(&Path, &Name)
+	return Path, Name, err
 }
