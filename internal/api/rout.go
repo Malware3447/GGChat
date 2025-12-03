@@ -12,13 +12,13 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/sirupsen/logrus"
 )
 
 type Api struct {
 	router     *chi.Mux
 	apiService *endpoint.ApiVerifications
 	apiChat    *endpoint.ApiChats
+	apiAIChat  *endpoint.AIApiChats
 	cfg        *config.Config
 }
 
@@ -45,11 +45,12 @@ func (rw *responseWrapper) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	return nil, nil, fmt.Errorf("responseWrapper: ResponseWriter не реализует http.Hijacker")
 }
 
-func NewApi(apiService *endpoint.ApiVerifications, apiChat *endpoint.ApiChats, cfg *config.Config) *Api {
+func NewApi(apiService *endpoint.ApiVerifications, apiChat *endpoint.ApiChats, apiAIChat *endpoint.AIApiChats, cfg *config.Config) *Api {
 	return &Api{
 		router:     nil,
 		apiService: apiService,
 		apiChat:    apiChat,
+		apiAIChat:  apiAIChat,
 		cfg:        cfg,
 	}
 }
@@ -67,10 +68,6 @@ func (a *Api) Init() {
 			w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
 			w.Header().Set("Access-Control-Allow-Credentials", "true")
 
-			logrus.Info("Request URL: ", r.URL.Path)
-			logrus.Info("Request Origin: ", clientOrigin)
-			logrus.Info("Request Headers: ", r.Header)
-
 			if r.Method == "OPTIONS" {
 				w.WriteHeader(http.StatusOK)
 				return
@@ -79,8 +76,6 @@ func (a *Api) Init() {
 			wrapped := &responseWrapper{ResponseWriter: w, statusCode: http.StatusOK}
 			next.ServeHTTP(wrapped, r)
 
-			logrus.Info("Response Status: ", wrapped.statusCode)
-			logrus.Info("Response Headers: ", wrapped.Header())
 		})
 	})
 
@@ -105,6 +100,16 @@ func (a *Api) Init() {
 		router.Get("/ws/{chat_id}", a.apiChat.HandleWebSocket)
 
 		router.Get("/public_keys/{chat_id}", a.apiChat.GetChatPublicKeys)
+	})
+
+	a.router.Route("/api/v1/ai_chats", func(router chi.Router) {
+		router.Use(MyMDL.JWTMiddleware(a.cfg.Jwt.SecretToken))
+
+		router.Get("/all_chats", a.apiAIChat.GetAllChatsAI)
+		router.Post("/new_chat", a.apiAIChat.CreateChat)
+		router.Post("/new_message", a.apiAIChat.NewMessage)
+		router.Delete("/delete_chat/{id}", a.apiAIChat.DeleteChatAI)
+		router.Get("/messages/{chat_id}", a.apiAIChat.GetMessages)
 	})
 }
 

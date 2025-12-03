@@ -3,7 +3,6 @@ package api
 import (
 	"GGChat/internal/config"
 	"GGChat/internal/interfaces"
-	"fmt"
 	"strconv"
 	"time"
 
@@ -45,8 +44,6 @@ func (j *Jwt) NewToken(UserId int) (string, error) {
 	if err != nil {
 		return "", err
 	}
-
-	fmt.Println("-------Token: ", tokenString)
 
 	return tokenString, nil
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -84,8 +85,8 @@ func (p OpenRouterProvider) ParseStreamResponse(line string) (string, bool, erro
 }
 
 func getProvider() Provider {
-	const apiKey = "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"
-	const model = "openai/gpt-oss-20b:free"
+	const apiKey = "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"
+	const model = "x-ai/grok-4.1-fast:free"
 	return OpenRouterProvider{APIKey: apiKey, Model: model}
 }
 
@@ -372,4 +373,44 @@ Respond with ONLY the number (1-%d) of the best matching document. Do not includ
 	}
 
 	return docNum, nil
+}
+
+var docNumbers map[int]string = map[int]string{
+	1: "claim.txt",
+}
+
+var urlTemplateStorage = "C:\\Users\\salam\\quattroProject\\containers\\"
+
+func collectingTags(docNum int) ([]string, string, error) {
+	docName, exists := docNumbers[docNum]
+	if !exists {
+		return nil, "", fmt.Errorf("document with number %s not found", docNum)
+	}
+
+	fullPath := urlTemplateStorage + docName
+
+	content, err := os.ReadFile(fullPath)
+	if err != nil {
+		return nil, "", fmt.Errorf("error reading file %s: %w", fullPath, err)
+	}
+
+	textContent := string(content)
+
+	re := regexp.MustCompile(`\{([^}]+)\}`)
+	matches := re.FindAllStringSubmatch(textContent, -1)
+
+	uniqueTags := make(map[string]bool)
+	var tags []string
+
+	for _, match := range matches {
+		if len(match) > 1 {
+			tag := strings.TrimSpace(match[1])
+			if !uniqueTags[tag] {
+				uniqueTags[tag] = true
+				tags = append(tags, tag)
+			}
+		}
+	}
+
+	return tags, fullPath, nil
 }

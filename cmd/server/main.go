@@ -42,8 +42,9 @@ func main() {
 	ws := websocket.NewManager()
 	go ws.Run()
 	chat := endpoint.NewApiChats(pgService, ws)
+	aiChat := endpoint.NewAIApiChats(pgService, ws)
 
-	router := api.NewApi(crutApi, chat, cfg)
+	router := api.NewApi(crutApi, chat, aiChat, cfg)
 
 	router.Init()
 
@@ -55,7 +56,7 @@ func main() {
 
 	mux.Handle("/", fileServer)
 
-	port := 8080
+	port := 8081
 
 	server := &http.Server{
 		Addr:    fmt.Sprintf(":%d", port),

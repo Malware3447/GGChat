@@ -113,7 +113,7 @@ func (repo *RepositoryPg) NewChat(ctx context.Context, chatName string, UserId i
 	}
 
 	const p = `
-		INSERT INTO chat_nembers (chat_id, user_id)
+		INSERT INTO chat_numbers (chat_id, user_id)
 		VALUES ($1, $2)
 	`
 
@@ -123,7 +123,7 @@ func (repo *RepositoryPg) NewChat(ctx context.Context, chatName string, UserId i
 	}
 
 	const b = `
-		INSERT INTO chat_nembers (chat_id, user_id)
+		INSERT INTO chat_numbers (chat_id, user_id)
 		VALUES ($1, $2)
 	`
 
@@ -171,7 +171,7 @@ func (repo *RepositoryPg) DeleteChat(ctx context.Context, uuid uuid.UUID) error 
 	}
 
 	const w = `
-		DELETE FROM chat_nembers
+		DELETE FROM chat_numbers
 		WHERE chat_id = $1
 	`
 
@@ -206,7 +206,7 @@ func (repo *RepositoryPg) GetAllChats(ctx context.Context, UserId int) ([]chats.
 		SELECT 
 			c.uuid, 
 			(select username from users
-			where id = (SELECT user_id FROM chat_nembers
+			where id = (SELECT user_id FROM chat_numbers
 			where chat_id = c.uuid and user_id != $1)
 			) AS chat_name,
 			(
@@ -221,7 +221,7 @@ func (repo *RepositoryPg) GetAllChats(ctx context.Context, UserId int) ([]chats.
 			lm.content AS last_message,
 			lmk.encrypted_key AS last_message_key
 		FROM chats c
-		JOIN chat_nembers cn ON c.uuid = cn.chat_id
+		JOIN chat_numbers cn ON c.uuid = cn.chat_id
 		
 		LEFT JOIN LATERAL (
 			SELECT m.id, m.content, m.sent_at
@@ -310,7 +310,7 @@ func (repo *RepositoryPg) NewMessage(ctx context.Context, chatId uuid.UUID, send
 	}
 
 	const qMembers = `
-		SELECT user_id FROM chat_nembers
+		SELECT user_id FROM chat_numbers
 		WHERE chat_id = $1
 	`
 	rows, err := tx.Query(ctx, qMembers, chatId)
@@ -455,7 +455,7 @@ func (repo *RepositoryPg) GetPublicKeysForChat(ctx context.Context, chatId uuid.
 	const q = `
         SELECT u.id, u.public_key 
         FROM users u
-        JOIN chat_nembers cn ON u.id = cn.user_id
+        JOIN chat_numbers cn ON u.id = cn.user_id
         WHERE cn.chat_id = $1 AND u.id != $2
     `
 	rows, err := repo.db.Query(ctx, q, chatId, senderId)
@@ -535,8 +535,8 @@ func (repo *RepositoryPg) DeleteChatAI(ctx context.Context, ID int) error {
 
 func (repo *RepositoryPg) CreateMessage(ctx context.Context, ChatID int, SenderID string, Content string) (*chats.MessageAI, error) {
 	const q = `
-		INSERT INTO ai_message (chat_id, content, sender_id) VALUES ($1, $2, $3)
-		RETURNING id, chat_id, content, sender_id, sent_at
+		INSERT INTO ai_messages (chat_id, content, sender_type) VALUES ($1, $2, $3)
+		RETURNING id, chat_id, content, sender_type, sent_at
 	`
 	var message chats.MessageAI
 	err := repo.db.QueryRow(ctx, q, ChatID, Content, SenderID).Scan(
@@ -554,13 +554,13 @@ func (repo *RepositoryPg) CreateMessage(ctx context.Context, ChatID int, SenderI
 
 func (repo *RepositoryPg) GetMessageInChat(ctx context.Context, ChatID int, Limit int, FromMessageDate *time.Time) ([]chats.MessageAI, error) {
 	const q = `
-	SELECT id, chat_id, content, sender_id, created_at
-      FROM messages
-      WHERE chat_id = $1 AND created_at > $2
-      ORDER BY created_at DESC
-      LIMIT $3
+	SELECT id, chat_id, content, sender_type, sent_at
+      FROM ai_messages
+      WHERE chat_id = $1
+      ORDER BY sent_at ASC
+      LIMIT $2
 	`
-	rows, err := repo.db.Query(ctx, q, ChatID, FromMessageDate, Limit)
+	rows, err := repo.db.Query(ctx, q, ChatID, Limit)
 	if err != nil {
 		return nil, err
 	}

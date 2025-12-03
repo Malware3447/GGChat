@@ -194,8 +194,7 @@
             margin-left: auto;
         }
         .message-content {
-            word-break: break-word;
-            /* Добавим немного места снизу для статуса */
+            white-space: pre-line; 
             margin-bottom: 20px;
         }
         
@@ -462,24 +461,24 @@
 
 <!-- Modal create chat -->
 <div id="modal-backdrop" class="modal-backdrop">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="create-title">
-        <div class="modal-title" id="create-title">Новый чат</div>
-        <form id="create-form">
-                    <div class="input-group">
-                        <input id="chat-name" type="text" placeholder=" " autocomplete="off" required>
-                        <label for="chat-name">Название чата</label>
-                    </div>
-                    <div class="input-group">
-                        <input id="user-name" type="text" placeholder=" " autocomplete="off" required>
-                        <label for="user-name">Имя пользователя</label>
-                    </div>
-                    <div class="modal-actions">
-                        <button type="button" id="cancel-create" class="btn secondary">Отмена</button>
-                        <button type="submit" class="btn primary">Создать</button>
-                    </div>
-                </form>
-    </div>
-        </div>
+<div class="modal" role="dialog" aria-modal="true" aria-labelledby="create-title">
+<div class="modal-title" id="create-title">Новый чат</div>
+<form id="create-form">
+            <div class="input-group">
+                <input id="chat-name" type="text" placeholder=" " autocomplete="off" required>
+                <label for="chat-name">Название чата</label>
+            </div>
+            <div class="input-group" id="user-name-group">
+                <input id="user-name" type="text" placeholder=" " autocomplete="off" required>
+                <label for="user-name">Имя пользователя</label>
+            </div>
+            <div class="modal-actions">
+                <button type="button" id="cancel-create" class="btn secondary">Отмена</button>
+                <button type="submit" class="btn primary">Создать</button>
+            </div>
+        </form>
+</div>
+</div>
         
         <!-- Modal: settings -->
         <div id="settings-modal-backdrop" class="modal-backdrop">
@@ -1102,31 +1101,44 @@
     /**
      * Отправка сообщения.
      * !! ИЗМЕНЕНО: Теперь использует currentWs.send() вместо fetch().
+     * Добавлена поддержка отправки сообщений в чаты с ИИ.
      */
     messageForm.addEventListener('submit', async (e) => { // <-- Добавлено async
         e.preventDefault();
         
         const plainText = messageInput.value.trim();
         
-        if (!plainText || !currentWs || currentWs.readyState !== WebSocket.OPEN) {
+        if (!plainText || !currentChatUuid) {
             console.warn('Не могу отправить сообщение...');
             return;
         }
         
-        // --- БЛОК ШИФРОВАНИЯ ---
-        // `chatPublicKeys` был загружен при открытии чата
-        const { content, keys } = await cryptoUtils.encryptMessage(plainText, chatPublicKeys);
-        // --- КОНЕЦ БЛОКА ---
-        
-        const message = {
-            type: 'new_message',
-            content: content,      // Зашифрованный контент (B64)
-            chat_id: currentChatUuid,
-            keys: keys             // Map[user_id -> enc_key]
-        };
-        
-        console.log("Отправка зашифрованного WS-сообщения:", message);
-        currentWs.send(JSON.stringify(message));
+        // Проверяем, является ли текущий чат чатом с ИИ
+        if (typeof currentChatUuid === 'number') {
+            // Отправка сообщения в чат с ИИ через REST API
+            await sendAIMessage(plainText);
+        } else {
+            // Отправка сообщения в обычный чат через WebSocket
+            if (!currentWs || currentWs.readyState !== WebSocket.OPEN) {
+                console.warn('WebSocket соединение не установлено');
+                return;
+            }
+            
+            // --- БЛОК ШИФРОВАНИЯ ---
+            // `chatPublicKeys` был загружен при открытии чата
+            const { content, keys } = await cryptoUtils.encryptMessage(plainText, chatPublicKeys);
+            // --- КОНЕЦ БЛОКА ---
+            
+            const message = {
+                type: 'new_message',
+                content: content,      // Зашифрованный контент (B64)
+                chat_id: currentChatUuid,
+                keys: keys             // Map[user_id -> enc_key]
+            };
+            
+            console.log("Отправка зашифрованного WS-сообщения:", message);
+            currentWs.send(JSON.stringify(message));
+        }
         
         messageInput.value = '';
     });
@@ -1141,6 +1153,11 @@
         
         // 2. Загружаем список чатов (который теперь будет расшифрован)
         await loadChats();
+        
+        // 3. Если мы на странице чатов с ИИ, запускаем автоматическое обновление
+        if (document.getElementById('ai-chats-icon').classList.contains('active')) {
+            setupAutoRefreshAIChats();
+        }
     });
 
     // --- Навигация между типами чатов ---
@@ -1148,6 +1165,9 @@
         // Переключение активной иконки
         document.getElementById('user-chats-icon').classList.add('active');
         document.getElementById('ai-chats-icon').classList.remove('active');
+        
+        // Останавливаем автоматическое обновление чатов с ИИ
+        stopAutoRefreshAIChats();
         
         // Здесь будет логика загрузки чатов с пользователями
         loadChats();
@@ -1160,27 +1180,397 @@
         
         // Здесь будет логика загрузки чатов с ИИ
         loadAIChats();
+        
+        // Запускаем автоматическое обновление чатов с ИИ
+        setupAutoRefreshAIChats();
     });
     
-    // Заглушка для загрузки чатов с ИИ
+    // Загрузка чатов с ИИ
     async function loadAIChats() {
-        // Очистка списка чатов
+        try {
+            const response = await fetch('/api/v1/ai_chats/all_chats', {
+                credentials: 'include'
+            });
+            
+            if (response.status === 401) {
+                console.error('Ошибка 401 при загрузке чатов с ИИ');
+                // window.location.href = '../../autentifications/index.html';
+                return;
+            }
+            
+            if (response.ok) {
+                const chats = await response.json();
+                
+                if (!chats || chats.length === 0) {
+                    displayAIChats([]);
+                } else {
+                    await displayAIChats(chats);
+                }
+            } else {
+                console.error('Ошибка при загрузке чатов с ИИ:', response.status);
+                displayAIChats([]);
+            }
+        } catch (error) {
+            console.error('Ошибка при загрузке чатов с ИИ:', error);
+            displayAIChats([]);
+        }
+    }
+    
+    // Автоматическое обновление списка чатов с ИИ
+    function setupAutoRefreshAIChats() {
+        // Очищаем предыдущий интервал, если он был
+        if (window.aiChatsRefreshInterval) {
+            clearInterval(window.aiChatsRefreshInterval);
+        }
+        
+        // Устанавливаем новый интервал обновления каждые 5 секунд
+        window.aiChatsRefreshInterval = setInterval(async () => {
+            // Проверяем, что мы находимся на странице чатов с ИИ
+            if (document.getElementById('ai-chats-icon').classList.contains('active')) {
+                await loadAIChats();
+            }
+        }, 5000);
+    }
+    
+    // Останавливаем автоматическое обновление
+    function stopAutoRefreshAIChats() {
+        if (window.aiChatsRefreshInterval) {
+            clearInterval(window.aiChatsRefreshInterval);
+            window.aiChatsRefreshInterval = null;
+        }
+    }
+    
+    // Автоматическое обновление сообщений в AI чате
+    function setupAutoRefreshAIMessages() {
+        // Очищаем предыдущий интервал, если он был
+        if (window.aiMessagesRefreshInterval) {
+            clearInterval(window.aiMessagesRefreshInterval);
+        }
+        
+        // Устанавливаем новый интервал обновления каждые 2 секунды
+        window.aiMessagesRefreshInterval = setInterval(async () => {
+            // Проверяем, что у нас открыт чат с ИИ
+            if (currentChatUuid && typeof currentChatUuid === 'number') {
+                await loadAIMessages(currentChatUuid);
+            }
+        }, 2000);
+    }
+    
+    // Останавливаем автоматическое обновление сообщений
+    function stopAutoRefreshAIMessages() {
+        if (window.aiMessagesRefreshInterval) {
+            clearInterval(window.aiMessagesRefreshInterval);
+            window.aiMessagesRefreshInterval = null;
+        }
+    }
+    
+    /**
+     * Отображает список чатов с ИИ.
+     */
+    async function displayAIChats(chats) {
+        if (!chats || chats.length === 0) {
+            emptyState.style.display = 'flex';
+            chatsList.innerHTML = '';
+            // Изменяем текст для пустого состояния чатов с ИИ
+            document.querySelector('#empty h2').textContent = 'Пока у вас нет чатов с ИИ';
+            document.querySelector('#empty p').textContent = 'Нажмите «Создать чат», чтобы начать новый разговор с ИИ агентом.';
+            return;
+        }
+        
+        emptyState.style.display = 'none';
         chatsList.innerHTML = '';
         
-        // Отображение сообщения, что чаты с ИИ будут позже
-        const aiChatsPlaceholder = document.createElement('div');
-        aiChatsPlaceholder.className = 'empty-state';
-        aiChatsPlaceholder.innerHTML = `
-            <h2>Чаты с ИИ агентом</h2>
-            <p>Эта функция находится в разработке. Скоро вы сможете общаться с нашими ИИ агентами.</p>
-        `;
-        chatsList.appendChild(aiChatsPlaceholder);
+        chats.forEach(chat => {
+            let lastMsgText = "Нет сообщений";
+            
+            if (chat.last_message) {
+                lastMsgText = chat.last_message;
+                if (lastMsgText.length > 35) {
+                    lastMsgText = lastMsgText.substring(0, 35) + '...';
+                }
+            }
+            
+            const unreadBadge = chat.unread_count > 0
+                ? `<div class="unread-badge">${chat.unread_count}</div>`
+                : '';
+            
+            const chatCardHTML = `
+                <div class="avatar">${chat.title.charAt(0).toUpperCase()}</div>
+                <div class="chat-info">
+                    <div class="chat-name">${chat.title}</div>
+                </div>
+                <div class="chat-status">
+                    ${unreadBadge}
+                </div>
+            `;
+            
+            const chatCard = document.createElement('div');
+            chatCard.className = 'chat-card';
+            chatCard.id = `chat-card-${chat.id}`;
+            chatCard.innerHTML = chatCardHTML;
+            
+            chatCard.addEventListener('click', () => {
+                document.querySelectorAll('.chat-card').forEach(card => {
+                    card.classList.remove('active');
+                });
+                chatCard.classList.add('active');
+                loadAIChat(chat.id, chat.title);
+            });
+            
+            chatsList.appendChild(chatCard);
+        });
+    }
+    
+    /**
+     * Загружает ВЫБРАННЫЙ чат с ИИ.
+     */
+    async function loadAIChat(chatId, chatName) {
+        currentChatUuid = chatId; // Используем ID вместо UUID для чатов с ИИ
+        currentChatName = chatName;
+        
+        chatTitle.textContent = chatName;
+        chatWindow.classList.add('active');
+        
+        // Останавливаем предыдущее автообновление сообщений
+        stopAutoRefreshAIMessages();
+        
+        // Загружаем историю сообщений
+        await loadAIMessages(chatId);
+        
+        // Запускаем автоматическое обновление сообщений
+        setupAutoRefreshAIMessages();
+    }
+    
+    /**
+     * Загружает историю сообщений чата с ИИ (REST).
+     */
+    async function loadAIMessages(chatId) {
+        if (!chatId) {
+            messagesContainer.innerHTML = '<div class="message-empty">Не выбран чат</div>';
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/api/v1/ai_chats/messages/${chatId}`, {
+                credentials: 'include'
+            });
+            
+            if (response.ok) {
+                const messages = await response.json();
+                await displayAIMessages(messages);
+            } else {
+                // Не показываем ошибку при автообновлении
+                if (!window.aiMessagesRefreshInterval) {
+                    messagesContainer.innerHTML = '<div class="message-empty">Ошибка загрузки сообщений</div>';
+                }
+            }
+        } catch (error) {
+            console.error('Ошибка при загрузке сообщений:', error);
+            // Не показываем ошибку при автообновлении
+            if (!window.aiMessagesRefreshInterval) {
+                messagesContainer.innerHTML = '<div class="message-empty">Ошибка загрузки сообщений</div>';
+            }
+        }
+    }
+    
+    /**
+     * Отображает ИСТОРИЮ сообщений чата с ИИ.
+     */
+    async function displayAIMessages(messages) {
+        // Если это автообновление, просто добавляем новые сообщения
+        if (window.aiMessagesRefreshInterval) {
+            if (!messages || messages.length === 0) return;
+            
+            // Получаем ID последнего отображенного сообщения
+            const existingMessages = messagesContainer.querySelectorAll('.message');
+            let lastMessageId = 0;
+            if (existingMessages.length > 0) {
+                const lastMessage = existingMessages[existingMessages.length - 1];
+                lastMessageId = parseInt(lastMessage.dataset.messageId) || 0;
+            }
+            
+            // Добавляем только новые сообщения
+            const newMessages = messages.filter(msg => msg.id > lastMessageId);
+            newMessages.forEach(message => {
+                appendAIMessageToChat(message);
+            });
+            
+            // Обновляем превью чата в списке только если есть новые сообщения
+            if (newMessages.length > 0) {
+                updateAIChatListPreview(currentChatUuid, newMessages[newMessages.length - 1].content);
+            }
+        } else {
+            // Полная перерисовка (не автообновление)
+            messagesContainer.innerHTML = '';
+            lastDisplayedDate = null;
+            
+            if (!messages || messages.length === 0) {
+                messagesContainer.innerHTML = '<div class="message-empty">Сообщений пока нет.</div>';
+                return;
+            }
+            
+            messages.forEach(message => {
+                appendAIMessageToChat(message);
+            });
+            
+            // Обновляем превью чата в списке
+            if (messages.length > 0) {
+                updateAIChatListPreview(currentChatUuid, messages[messages.length - 1].content);
+            }
+        }
+    }
+    
+    /**
+     * Добавляет одно сообщение чата с ИИ в DOM.
+     */
+    function appendAIMessageToChat(message) {
+        // Убираем "пустое" сообщение, если оно есть
+        const emptyMsg = messagesContainer.querySelector('.message-empty');
+        if (emptyMsg) {
+            emptyMsg.remove();
+        }
+
+        const messageDate = message.sent_at;
+        if (messageDate) {
+            const date = new Date(messageDate);
+            // Получаем строку YYYY-MM-DD для простого сравнения
+            const messageDateStr = date.toISOString().split('T')[0];
+
+            // Сравниваем с последней сохраненной датой
+            if (messageDateStr !== lastDisplayedDate) {
+                // Если даты не совпадают, создаем и вставляем разделитель
+                const separator = document.createElement('div');
+                separator.className = 'date-separator';
+                separator.innerHTML = `<span class="date-separator-text">${formatDateForSeparator(date)}</span>`;
+                messagesContainer.appendChild(separator);
+                
+                // Обновляем трекер
+                lastDisplayedDate = messageDateStr;
+            }
+        }
+
+        const messageElement = document.createElement('div');
+        messageElement.className = 'message';
+        
+        // Добавляем ID сообщения для идентификации
+        if (message.id) {
+            messageElement.dataset.messageId = message.id;
+        }
+        
+        // Определяем, наше ли это сообщение
+        if (message.sender_type === "user") {
+            messageElement.classList.add('own');
+        }
+        
+        // Добавляем время отправки сообщения
+        const timeDiv = document.createElement('div');
+        timeDiv.className = 'message-time';
+        
+        // Получаем время из сообщения
+        const messageTime = message.sent_at;
+        if (messageTime) {
+            // Преобразуем в объект Date, если это строка
+            const date = new Date(messageTime);
+            // Форматируем время в ЧЧ:ММ
+            const hours = date.getHours().toString().padStart(2, '0');
+            const minutes = date.getMinutes().toString().padStart(2, '0');
+            timeDiv.textContent = `${hours}:${minutes}`;
+        } else {
+            // Если время не указано, показываем прочерк
+            timeDiv.textContent = '--:--';
+        }
+        
+        messageElement.appendChild(timeDiv);
+        
+        // Для "own" сообщений добавляем статус
+        if (message.sender_type === "user") {
+            const statusDiv = document.createElement('div');
+            statusDiv.className = 'message-status status-read';
+            messageElement.appendChild(statusDiv);
+        }
+        
+        // Используем textContent для безопасности
+        const content = document.createElement('div');
+        content.className = 'message-content';
+        content.textContent = message.content;
+        messageElement.appendChild(content);
+        
+        messagesContainer.appendChild(messageElement);
+        
+        // Прокручиваем к последнему сообщению
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+    
+    function updateAIChatListPreview(chatId, newText) {
+        const chatCard = document.getElementById(`chat-card-${chatId}`);
+        if (chatCard) {
+            const lastMsgElement = chatCard.querySelector('.last-message');
+            if (lastMsgElement) {
+                let content = newText;
+                if (content.length > 35) {
+                    content = content.substring(0, 35) + '...';
+                }
+                lastMsgElement.textContent = content;
+            }
+            // Убираем счетчик, т.к. чат очевидно прочитан (он открыт)
+            const badge = chatCard.querySelector('.unread-badge');
+            if (badge) {
+                badge.remove();
+            }
+        }
+    }
+    
+    /**
+     * Отправка сообщения в чат с ИИ.
+     */
+    async function sendAIMessage(content) {
+        try {
+            const response = await fetch('/api/v1/ai_chats/new_message', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({
+                    chat_id: currentChatUuid,
+                    content: content
+                })
+            });
+            
+            if (response.ok) {
+                const message = await response.json();
+                appendAIMessageToChat(message);
+                
+                // Обновляем превью чата в списке
+                updateAIChatListPreview(currentChatUuid, content);
+            } else {
+                console.error('Ошибка при отправке сообщения:', response.status);
+            }
+        } catch (error) {
+            console.error('Ошибка при отправке сообщения:', error);
+        }
     }
     
     // --- Модальные окна (без изменений) ---
     
+    // Остановка автоматического обновления при закрытии страницы
+    window.addEventListener('beforeunload', () => {
+        stopAutoRefreshAIChats();
+    });
+    
     // Создание чата
     openCreateBtn.addEventListener('click', () => {
+        // Проверяем, какой тип чата мы создаем
+        const isAIChat = document.getElementById('ai-chats-icon').classList.contains('active');
+        
+        if (isAIChat) {
+            // Для чатов с ИИ показываем только поле названия
+            document.getElementById('user-name-group').style.display = 'none';
+            document.getElementById('create-title').textContent = 'Новый чат с ИИ';
+        } else {
+            // Для обычных чатов показываем оба поля
+            document.getElementById('user-name-group').style.display = 'block';
+            document.getElementById('create-title').textContent = 'Новый чат';
+        }
+        
         modalBackdrop.classList.add('open');
         chatNameInput.focus();
     });
@@ -1198,32 +1588,63 @@
     createForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const chatName = chatNameInput.value.trim();
-        const userName = userNameInput.value.trim();
-        if (!chatName || !userName) return;
         
-        try {
-            const response = await fetch('/api/v1/chats/new_chat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({ chat_name: chatName, user_name: userName })
-            });
+        // Проверяем, какой тип чата мы создаем
+        const isAIChat = document.getElementById('ai-chats-icon').classList.contains('active');
+        
+        if (isAIChat) {
+            // Создание чата с ИИ
+            if (!chatName) return;
             
-            console.log(response)
-
-            if (response.status === 401) {
-                window.location.href = '../../autentifications/index.html';
-                return;
+            try {
+                const response = await fetch('/api/v1/ai_chats/new_chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ title: chatName })
+                });
+                
+                if (response.status === 401) {
+                    window.location.href = '../../autentifications/index.html';
+                    return;
+                }
+                
+                if (response.ok) {
+                    closeCreateModal();
+                    await loadAIChats(); // Обновляем список чатов с ИИ
+                } else {
+                    console.error('Ошибка при создании чата с ИИ:', response.status);
+                }
+            } catch (error) {
+                console.error('Ошибка при создании чата с ИИ:', error);
             }
+        } else {
+            // Создание обычного чата
+            const userName = userNameInput.value.trim();
+            if (!chatName || !userName) return;
             
-            if (response.ok) {
-                closeCreateModal();
-                await loadChats(); // Обновляем список чатов
-            } else {
-                console.error('Ошибка при создании чата:', response.status);
+            try {
+                const response = await fetch('/api/v1/chats/new_chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ chat_name: chatName, user_name: userName })
+                });
+                
+                if (response.status === 401) {
+                    window.location.href = '../../autentifications/index.html';
+                    return;
+                }
+                
+                if (response.ok) {
+                    closeCreateModal();
+                    await loadChats(); // Обновляем список чатов
+                } else {
+                    console.error('Ошибка при создании чата:', response.status);
+                }
+            } catch (error) {
+                console.error('Ошибка при создании чата:', error);
             }
-        } catch (error) {
-            console.error('Ошибка при создании чата:', error);
         }
     });
 

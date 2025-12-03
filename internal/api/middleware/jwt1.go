@@ -22,7 +22,6 @@ func JWTMiddleware(secret string) func(http.Handler) http.Handler {
 			cookieHeader, ok := r.Header["Cookie"]
 
 			if ok && len(cookieHeader) > 0 {
-				fmt.Printf("Сырой заголовок Cookie: %v\n", cookieHeader)
 			} else {
 				fmt.Println("Сырой заголовок Cookie: НЕ НАЙДЕН в r.Header!")
 			}
@@ -44,7 +43,6 @@ func JWTMiddleware(secret string) func(http.Handler) http.Handler {
 				return
 			}
 
-			fmt.Println("Куки 'UserToken' получено, продолжаем валидацию.")
 			tokenString := cookie.Value
 
 			claims := &CustomClaims{}
