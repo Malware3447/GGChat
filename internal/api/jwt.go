@@ -25,7 +25,7 @@ func NewJwt(cfg *config.Config) *Jwt {
 }
 
 func (j *Jwt) NewToken(UserId int) (string, error) {
-	expirationTime := time.Now().Add(15 * time.Minute)
+	expirationTime := time.Now().Add(24 * time.Hour)
 
 	usid := strconv.Itoa(UserId)
 	claims := CustomClaims{

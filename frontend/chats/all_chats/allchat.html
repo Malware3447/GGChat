@@ -1,496 +1,747 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GGChat — Ваши чаты</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Quattro — Ваши чаты</title>
+        <link
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap"
+            rel="stylesheet"
+        />
 
-    <style>
-        :root {
-            --primary-color: #1E453E; /* Темно-зеленый */
-            --primary-hover: #15322C; /* Темнее зеленый */
-            --background-light: #F7F7F7; /* Очень светлый фон */
-            --text-dark: #1E293B;
-            --shadow-light: 0 10px 30px rgba(0, 0, 0, 0.08);
-            --border-radius-large: 16px;
-            --transition-speed: 0.3s;
-        }
+        <style>
+            :root {
+                --primary-color: #1A2436; /* Темно-синий */
+                --primary-hover: #2A3A56; /* Более светлый оттенок */
+                --background-light: #FFFFFF; /* Белый фон */
+                --text-dark: #1A2436; /* Темно-синий для текста */
+                --shadow-light: 0 10px 30px rgba(26, 36, 54, 0.15);
+                --border-radius-large: 16px;
+                --transition-speed: 0.3s;
+                --accent-color: #3A5670; /* Синий акцент */
+                --accent-hover: #507090; /* Светлый синий акцент */
+            }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Inter', sans-serif; background-color: var(--background-light); color: var(--text-dark); line-height: 1.6; }
-        a { text-decoration: none; color: var(--primary-color); }
+            * {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+            }
+            body {
+                font-family: "Inter", sans-serif;
+                background-color: var(--background-light);
+                color: var(--text-dark);
+                line-height: 1.6;
+            }
+            a {
+                text-decoration: none;
+                color: var(--primary-color);
+            }
 
-        .container { display: flex; height: 100vh; }
-        
-        /* Навигационный бар */
-        .nav-bar {
-            width: 60px;
-            background-color: var(--primary-color);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 20px 0;
-            gap: 20px;
-        }
-        
-        .nav-icon {
-            width: 40px;
-            height: 40px;
-            background-color: rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-        
-        .nav-icon.active {
-            background-color: rgba(255, 255, 255, 0.2);
-        }
-        
-        .nav-icon:hover {
-            background-color: rgba(255, 255, 255, 0.3);
-        }
-        
-        /* Левая панель - список чатов */
-        .sidebar {
-            width: 300px;
-            background-color: white;
-            border-right: 1px solid #E2E8F0;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            overflow: hidden;
-        }
-        
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 20px;
-            border-bottom: 1px solid #E2E8F0;
-        }
-        .logo { font-size: 24px; font-weight: 800; color: var(--primary-color); }
-        .create-btn {
-            padding: 10px 16px;
-            background: var(--primary-color);
-            color: #fff;
-            border-radius: 10px;
-            font-weight: 600;
-            transition: background-color var(--transition-speed), transform var(--transition-speed);
-            border: none;
-            cursor: pointer;
-        }
-        .create-btn:hover { background: var(--primary-hover); transform: translateY(-1px); }
-        
-        .search-container { padding: 15px; border-bottom: 1px solid #E2E8F0; }
-        .search-input {
-            width: 100%;
-            padding: 12px 15px;
-            border: 1px solid #E2E8F0;
-            border-radius: 10px;
-            font-size: 16px;
-            transition: border-color 0.3s;
-        }
-        .search-input:focus {
-            outline: none;
-            border-color: var(--primary-color);
-        }
-        
-        .chats-list {
-            flex: 1;
-            overflow-y: auto;
-            padding: 10px 0;
-        }
-        
-        .chat-card {
-            display: flex;
-            align-items: center;
-            padding: 15px 20px;
-            border-bottom: 1px solid #F1F5F9;
-            cursor: pointer;
-            transition: background-color var(--transition-speed);
-        }
-        .chat-card:hover { background-color: #F8FAFC; }
-        .chat-card.active { background-color: #F1F5F9; }
-        .avatar {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            background: var(--primary-color);
-            color: white;
-            font-weight: 800;
-            display: grid;
-            place-items: center;
-            margin-right: 15px;
-        }
-        .chat-info { flex: 1; min-width: 0; }
-        .chat-name {
-            font-weight: 600;
-            font-size: 16px;
-            margin-bottom: 5px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .last-message {
-            color: #64748B;
-            font-size: 14px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        
-        /* Правая панель - окно чата */
-        .chat-window {
-            width: 66.66%;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-        }
-        
-        .chat-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 20px;
-            border-bottom: 1px solid #E2E8F0;
-        }
-        .chat-title { font-size: 20px; font-weight: 700; }
-        .chat-actions { display: flex; align-items: center; gap: 10px; }
-        .icon-btn {
-            height: 40px;
-            width: 40px;
-            display: grid;
-            place-items: center;
-            border-radius: 10px;
-            border: 1px solid #E2E8F0;
-            background: #fff;
-            cursor: pointer;
-            transition: background var(--transition-speed), transform var(--transition-speed), border-color var(--transition-speed);
-        }
-        .icon-btn:hover { background: #F8FAFC; transform: translateY(-1px); border-color: #D1D5DB; }
-        
-        .messages-container {
-            flex: 1;
-            overflow-y: auto;
-            padding: 20px;
-            background-color: #F8FAFC;
-        }
-        .message {
-            margin-bottom: 15px;
-            padding: 12px 16px;
-            background: #fff;
-            border-radius: 12px;
-            max-width: 70%;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-            position: relative; /* Для позиционирования статуса */
-        }
-        .message.own {
-            background: var(--primary-color);
-            color: #fff;
-            margin-left: auto;
-        }
-        .message-content {
-            white-space: pre-line; 
-            margin-bottom: 20px;
-        }
-        
-        .message-time {
-            position: absolute;
-            bottom: 4px;
-            right: 24px; /* 18px (ширина статуса) + 6px (отступ статуса) */
-            font-size: 12px;
-            color: #64748B;
-        }
-        
-        .message.own .message-time {
-            color: rgba(255, 255, 255, 0.7);
-        }
-        .message-empty {
-            text-align: center;
-            color: #64748B;
-            padding: 40px 20px;
-        }
-        
-        .composer {
-            display: flex;
-            gap: 10px;
-            padding: 15px 20px;
-            border-top: 1px solid #E2E8F0;
-            background: #fff;
-        }
-        .message-input {
-            flex: 1;
-            padding: 12px 15px;
-            border: 1px solid #E2E8F0;
-            border-radius: 12px;
-            font-size: 16px;
-        }
-        .send-btn {
-            background: var(--primary-color);
-            color: #fff;
-            border: none;
-            padding: 12px 20px;
-            border-radius: 12px;
-            font-weight: 600;
-            cursor: pointer;
-        }
-        .send-btn:hover { background: var(--primary-hover); }
-        
-        /* Модальные окна */
-        .modal-backdrop {
-            position: fixed;
-            inset: 0;
-            background: rgba(15, 23, 42, 0.35);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 40;
-        }
-        .modal-backdrop.open { display: flex; }
-        .modal {
-            width: 100%;
-            max-width: 420px;
-            background: #fff;
-            border-radius: 16px;
-            box-shadow: var(--shadow-light);
-            padding: 22px;
-            transform: translateY(10px);
-            opacity: 0;
-            transition: opacity var(--transition-speed), transform var(--transition-speed);
-        }
-        .modal-backdrop.open .modal { transform: translateY(0); opacity: 1; }
-        .modal-title { font-weight: 700; font-size: 18px; margin-bottom: 14px; }
-        .input-group { margin-bottom: 16px; position: relative; }
-        .input-group label {
-            position: absolute;
-            top: 14px;
-            left: 14px;
-            color: #94A3B8;
-            transition: 0.2s ease-out;
-            pointer-events: none;
-        }
-        .input-group input:focus ~ label,
-        .input-group input:not(:placeholder-shown) ~ label {
-            top: -10px;
-            left: 10px;
-            font-size: 12px;
-            background-color: white;
-            padding: 0 5px;
-            color: var(--primary-color);
-        }
-        .input-group input {
-            width: 100%;
-            padding: 14px;
-            border: 1px solid #E2E8F0;
-            border-radius: 10px;
-            font-size: 16px;
-            transition: border-color 0.3s;
-        }
-        .input-group input:focus { outline: none; border-color: var(--primary-color); }
-        .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 8px; }
-        .btn { padding: 10px 14px; border-radius: 10px; font-weight: 600; border: none; cursor: pointer; }
-        .btn.secondary { background: #F1F5F9; color: #0F172A; }
-        .btn.primary { background: var(--primary-color); color: #fff; }
-        .btn.primary:hover { background: var(--primary-hover); }
-        .danger { background: #EF4444; color: #fff; }
-        .danger:hover { background: #DC2626; }
-        
-        /* Состояния */
-        .empty-state {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100%;
-            text-align: center;
-            padding: 20px;
-        }
-        .empty-state h2 { font-size: 24px; font-weight: 700; margin-bottom: 10px; }
-        .empty-state p { color: #64748B; max-width: 400px; }
-        
-        @media (max-width: 1100px) {
-            .container { flex-direction: column; height: auto; }
-            .sidebar, .chat-window { width: 100%; height: auto; }
-            .chat-window { display: none; }
-            .chat-window.active { display: flex; }
-        }
-        
-        @media (max-width: 720px) {
-            .header { padding: 16px; }
-            .search-container { padding: 10px; }
-            .chat-card { padding: 12px 15px; }
-            .avatar { width: 40px; height: 40px; margin-right: 10px; }
-            .chat-name { font-size: 15px; }
-            .last-message { font-size: 13px; }
-            .chat-header { padding: 16px; }
-            .chat-title { font-size: 18px; }
-            .messages-container { padding: 15px; }
-            .composer { padding: 12px 15px; }
-            .message-input { padding: 10px 12px; font-size: 15px; }
-            .send-btn { padding: 10px 15px; font-size: 15px; }
-        }
+            .container {
+                display: flex;
+                height: 100vh;
+            }
 
-        .message-status {
-            display: none; /* Скрываем по умолчанию */
-            width: 18px;
-            height: 18px;
-            position: absolute; /* Абсолютное позиционирование */
-            bottom: 4px; /* Отступ снизу */
-            right: 6px; /* Отступ справа */
-            background-repeat: no-repeat;
-            background-position: center;
-            background-size: contain;
-        }
-        
-        /* Показываем статус только для .own сообщений */
-        .message.own .message-status {
-            display: block;
-        }
+            /* Навигационный бар */
+            .nav-bar {
+                width: 60px;
+                background-color: var(--primary-color);
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                padding: 20px 0;
+                gap: 20px;
+            }
 
-        /* Иконка "Отправлено" (одна белая, т.к. фон --primary-color) */
-        .message-status.status-send {
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.7)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'%3E%3C/polyline%3E%3C/svg%3E");
-        }
+            .nav-icon {
+                width: 40px;
+                height: 40px;
+                background-color: rgba(255, 255, 255, 0.1);
+                border-radius: 10px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                transition: background-color 0.3s;
+            }
 
-        /* Иконка "Прочитано" (две белые) */
-        .message-status.status-read {
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.9)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 13l3 3 7-7' /%3E%3Cpath d='M13 13l3 3 7-7' /%3E%3C/svg%3E");
-        }
+            .nav-icon.active {
+                background-color: rgba(58, 86, 112, 0.3); /* Акцентный цвет с прозрачностью */
+            }
 
-        .date-separator {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 10px 0;
-        }
-        .date-separator-text {
-            font-size: 13px;
-            font-weight: 600;
-            color: #64748B; /* Тот же цвет, что и у времени */
-            background-color: #F1F5F9; /* Светлый фон */
-            padding: 4px 12px;
-            border-radius: 20px;
-        }
+            .nav-icon:hover {
+                background-color: rgba(58, 86, 112, 0.2); /* Акцентный цвет с прозрачностью при наведении */
+            }
 
-        .chat-status {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-end;
-            justify-content: center;
-            height: 50px; /* Та же высота, что и у аватара */
-        }
+            /* Левая панель - список чатов */
+            .sidebar {
+                width: 300px;
+                background-color: white;
+                border-right: 1px solid #e2e8f0;
+                display: flex;
+                flex-direction: column;
+                height: 100vh;
+                overflow: hidden;
+            }
 
-        .unread-badge {
-            background-color: var(--primary-color);
-            color: #fff;
-            font-size: 12px;
-            font-weight: 700;
-            padding: 3px 8px;
-            border-radius: 20px;
-            min-width: 24px;
-            text-align: center;
-        }
-    </style>
-</head>
-<body>
+            .header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 20px;
+                border-bottom: 1px solid #e2e8f0;
+            }
+            .logo {
+                font-size: 24px;
+                font-weight: 800;
+                color: var(--primary-color);
+            }
+            .create-btn {
+                padding: 10px 16px;
+                background: var(--accent-color); /* Акцентный цвет */
+                color: #fff;
+                border-radius: 10px;
+                font-weight: 600;
+                transition:
+                    background-color var(--transition-speed),
+                    transform var(--transition-speed);
+                border: none;
+                cursor: pointer;
+            }
+            .create-btn:hover {
+                background: var(--accent-hover); /* Светлый оттенок акцента */
+                transform: translateY(-1px);
+            }
 
-<div class="container">
-    <!-- Навигационный бар -->
-    <div class="nav-bar">
-        <div class="nav-icon active" id="user-chats-icon" title="Чаты с пользователями">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M17 21V19C17 17.9391 16.5786 16.9217 15.8284 16.1569C15.0783 15.392 14.0591 14.9391 13 14.9H9C7.94087 14.9 6.92172 15.392 6.17157 16.1569C5.42143 16.9217 5 17.9391 5 19V21" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="M12 11C14.2091 11 16 9.20914 16 7C16 4.79086 14.2091 3 12 3C9.79086 3 8 4.79086 8 7C8 9.20914 9.79086 11 12 11Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-        </div>
-        <div class="nav-icon" id="ai-chats-icon" title="Чаты с ИИ агентом">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 2L15.09 8.26L22 9L17 14L18.18 21.02L12 17.77L5.82 21.02L7 14L2 9L8.91 8.26L12 2Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-        </div>
-    </div>
-    <!-- Левая панель - список чатов -->
-    <div class="sidebar">
-        <header class="header">
-            <div class="logo">GGChat</div>
-            <button id="open-create" class="create-btn">Создать чат</button>
-        </header>
-        
-        <div class="search-container">
-            <input type="text" class="search-input" placeholder="Поиск чатов...">
-        </div>
-        
-        <div class="chats-list" id="chats-list">
-            <!-- Чаты будут добавляться сюда динамически -->
-        </div>
-        
-        <section id="empty" class="empty-state" style="display: none;">
-            <h2>Пока у вас нет чатов</h2>
-            <p>Нажмите «Создать чат», чтобы начать новый разговор. Вы сможете добавить собеседников позже.</p>
-        </section>
-    </div>
-    
-    <!-- Правая панель - окно чата -->
-    <div class="chat-window" id="chat-window">
-        <div class="chat-header">
-            <div class="chat-title" id="chat-title">Выберите чат</div>
-            <div class="chat-actions">
-                <button id="open-settings" class="icon-btn" title="Настройки">
-                    <!-- simple gear icon -->
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                        <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" stroke="#0F172A" stroke-width="1.5"/>
-                        <path d="M19.4 13.5a7.6 7.6 0 0 0 .05-3l2.02-1.53-2-3.46-2.44.6a7.63 7.63 0 0 0-2.6-1.5L12 1.5 9.57 4.1a7.63 7.63 0 0 0-2.6 1.5l-2.44-.6-2 3.46 2.02 1.53a7.6 7.6 0 0 0 0 3L2.53 15l2 3.46 2.44-.6c.78.62 1.66 1.12 2.6 1.5L12 22.5l2.43-2.6c.94-.38 1.82-.88 2.6-1.5l2.44.6 2-3.46-2.02-1.54Z" stroke="#94A3B8" stroke-width="1.2"/>
+            .search-container {
+                padding: 15px;
+                border-bottom: 1px solid #e2e8f0;
+            }
+            .search-input {
+                width: 100%;
+                padding: 12px 15px;
+                border: 1px solid #e2e8f0;
+                border-radius: 10px;
+                font-size: 16px;
+                transition: border-color 0.3s;
+            }
+            .search-input:focus {
+                outline: none;
+                border-color: var(--accent-color); /* Акцентный цвет для фокуса */
+            }
+
+            .chats-list {
+                flex: 1;
+                overflow-y: auto;
+                padding: 10px 0;
+            }
+
+            .chat-card {
+                display: flex;
+                align-items: center;
+                padding: 15px 20px;
+                border-bottom: 1px solid #f1f5f9;
+                cursor: pointer;
+                transition: background-color var(--transition-speed);
+            }
+            .chat-card:hover {
+                background-color: #f8fafc;
+            }
+            .chat-card.active {
+                background-color: #f1f5f9;
+            }
+            .avatar {
+                width: 50px;
+                height: 50px;
+                border-radius: 50%;
+                background: var(--accent-color); /* Акцентный цвет для аватара */
+                color: white;
+                font-weight: 800;
+                display: grid;
+                place-items: center;
+                margin-right: 15px;
+            }
+            .chat-info {
+                flex: 1;
+                min-width: 0;
+            }
+            .chat-name {
+                font-weight: 600;
+                font-size: 16px;
+                margin-bottom: 5px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            .last-message {
+                color: #64748b;
+                font-size: 14px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            /* Правая панель - окно чата */
+            .chat-window {
+                width: 66.66%;
+                display: flex;
+                flex-direction: column;
+                height: 100vh;
+            }
+
+            .chat-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 20px;
+                border-bottom: 1px solid #e2e8f0;
+            }
+            .chat-title {
+                font-size: 20px;
+                font-weight: 700;
+            }
+            .chat-actions {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+            .icon-btn {
+                height: 40px;
+                width: 40px;
+                display: grid;
+                place-items: center;
+                border-radius: 10px;
+                border: 1px solid #e2e8f0;
+                background: #fff;
+                cursor: pointer;
+                transition:
+                    background var(--transition-speed),
+                    transform var(--transition-speed),
+                    border-color var(--transition-speed);
+            }
+            .icon-btn:hover {
+                background: #f8fafc;
+                transform: translateY(-1px);
+                border-color: #d1d5db;
+            }
+
+            .messages-container {
+                flex: 1;
+                overflow-y: auto;
+                padding: 20px;
+                background-color: #f8fafc;
+            }
+            .message {
+                margin-bottom: 15px;
+                padding: 12px 16px;
+                background: #fff;
+                border-radius: 12px;
+                max-width: 70%;
+                box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+                position: relative; /* Для позиционирования статуса */
+            }
+            .message.own {
+                background: var(--accent-color); /* Акцентный цвет для своих сообщений */
+                color: #fff;
+                margin-left: auto;
+            }
+            .message-content {
+                white-space: pre-line;
+                margin-bottom: 20px;
+            }
+
+            .message-time {
+                position: absolute;
+                bottom: 4px;
+                right: 24px; /* 18px (ширина статуса) + 6px (отступ статуса) */
+                font-size: 12px;
+                color: #64748b;
+            }
+
+            .message.own .message-time {
+                color: rgba(255, 255, 255, 0.7);
+            }
+            .message-empty {
+                text-align: center;
+                color: #64748b;
+                padding: 40px 20px;
+            }
+
+            .composer {
+                display: flex;
+                gap: 10px;
+                padding: 15px 20px;
+                border-top: 1px solid #e2e8f0;
+                background: #fff;
+            }
+            .message-input {
+                flex: 1;
+                padding: 12px 15px;
+                border: 1px solid #e2e8f0;
+                border-radius: 12px;
+                font-size: 16px;
+            }
+            .send-btn {
+                background: var(--accent-color); /* Акцентный цвет для кнопки отправки */
+                color: #fff;
+                border: none;
+                padding: 12px 20px;
+                border-radius: 12px;
+                font-weight: 600;
+                cursor: pointer;
+            }
+            .send-btn:hover {
+                background: var(--accent-hover); /* Светлый оттенок акцента */
+            }
+
+            /* Модальные окна */
+            .modal-backdrop {
+                position: fixed;
+                inset: 0;
+                background: rgba(15, 23, 42, 0.35);
+                display: none;
+                align-items: center;
+                justify-content: center;
+                z-index: 40;
+            }
+            .modal-backdrop.open {
+                display: flex;
+            }
+            .modal {
+                width: 100%;
+                max-width: 420px;
+                background: #fff;
+                border-radius: 16px;
+                box-shadow: var(--shadow-light);
+                padding: 22px;
+                transform: translateY(10px);
+                opacity: 0;
+                transition:
+                    opacity var(--transition-speed),
+                    transform var(--transition-speed);
+            }
+            .modal-backdrop.open .modal {
+                transform: translateY(0);
+                opacity: 1;
+            }
+            .modal-title {
+                font-weight: 700;
+                font-size: 18px;
+                margin-bottom: 14px;
+            }
+            .input-group {
+                margin-bottom: 16px;
+                position: relative;
+            }
+            .input-group label {
+                position: absolute;
+                top: 14px;
+                left: 14px;
+                color: #94a3b8;
+                transition: 0.2s ease-out;
+                pointer-events: none;
+            }
+            .input-group input:focus ~ label,
+            .input-group input:not(:placeholder-shown) ~ label {
+                top: -10px;
+                left: 10px;
+                font-size: 12px;
+                background-color: white;
+                padding: 0 5px;
+                color: var(--primary-color);
+            }
+            .input-group input {
+                width: 100%;
+                padding: 14px;
+                border: 1px solid #e2e8f0;
+                border-radius: 10px;
+                font-size: 16px;
+                transition: border-color 0.3s;
+            }
+            .input-group input:focus {
+                outline: none;
+                border-color: var(--primary-color);
+            }
+            .modal-actions {
+                display: flex;
+                gap: 10px;
+                justify-content: flex-end;
+                margin-top: 8px;
+            }
+            .btn {
+                padding: 10px 14px;
+                border-radius: 10px;
+                font-weight: 600;
+                border: none;
+                cursor: pointer;
+            }
+            .btn.secondary {
+                background: #f1f5f9;
+                color: #0f172a;
+            }
+            .btn.primary {
+                background: var(--accent-color); /* Акцентный цвет для кнопки */
+                color: #fff;
+            }
+            .btn.primary:hover {
+                background: var(--accent-hover); /* Светлый оттенок акцента */
+            }
+            .danger {
+                background: #ef4444;
+                color: #fff;
+            }
+            .danger:hover {
+                background: #dc2626;
+            }
+
+            /* Состояния */
+            .empty-state {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                height: 100%;
+                text-align: center;
+                padding: 20px;
+            }
+            .empty-state h2 {
+                font-size: 24px;
+                font-weight: 700;
+                margin-bottom: 10px;
+            }
+            .empty-state p {
+                color: #64748b;
+                max-width: 400px;
+            }
+
+            @media (max-width: 1100px) {
+                .container {
+                    flex-direction: column;
+                    height: auto;
+                }
+                .sidebar,
+                .chat-window {
+                    width: 100%;
+                    height: auto;
+                }
+                .chat-window {
+                    display: none;
+                }
+                .chat-window.active {
+                    display: flex;
+                }
+            }
+
+            @media (max-width: 720px) {
+                .header {
+                    padding: 16px;
+                }
+                .search-container {
+                    padding: 10px;
+                }
+                .chat-card {
+                    padding: 12px 15px;
+                }
+                .avatar {
+                    width: 40px;
+                    height: 40px;
+                    margin-right: 10px;
+                }
+                .chat-name {
+                    font-size: 15px;
+                }
+                .last-message {
+                    font-size: 13px;
+                }
+                .chat-header {
+                    padding: 16px;
+                }
+                .chat-title {
+                    font-size: 18px;
+                }
+                .messages-container {
+                    padding: 15px;
+                }
+                .composer {
+                    padding: 12px 15px;
+                }
+                .message-input {
+                    padding: 10px 12px;
+                    font-size: 15px;
+                }
+                .send-btn {
+                    padding: 10px 15px;
+                    font-size: 15px;
+                }
+            }
+
+            .message-status {
+                display: none; /* Скрываем по умолчанию */
+                width: 18px;
+                height: 18px;
+                position: absolute; /* Абсолютное позиционирование */
+                bottom: 4px; /* Отступ снизу */
+                right: 6px; /* Отступ справа */
+                background-repeat: no-repeat;
+                background-position: center;
+                background-size: contain;
+            }
+
+            /* Показываем статус только для .own сообщений */
+            .message.own .message-status {
+                display: block;
+            }
+
+            /* Иконка "Отправлено" (одна белая, т.к. фон --primary-color) */
+            .message-status.status-send {
+                background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.7)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'%3E%3C/polyline%3E%3C/svg%3E");
+            }
+
+            /* Иконка "Прочитано" (две белые) */
+            .message-status.status-read {
+                background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.9)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 13l3 3 7-7' /%3E%3Cpath d='M13 13l3 3 7-7' /%3E%3C/svg%3E");
+            }
+
+            .date-separator {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 10px 0;
+            }
+            .date-separator-text {
+                font-size: 13px;
+                font-weight: 600;
+                color: #64748b; /* Тот же цвет, что и у времени */
+                background-color: #f1f5f9; /* Светлый фон */
+                padding: 4px 12px;
+                border-radius: 20px;
+            }
+
+            .chat-status {
+                display: flex;
+                flex-direction: column;
+                align-items: flex-end;
+                justify-content: center;
+                height: 50px; /* Та же высота, что и у аватара */
+            }
+
+            .unread-badge {
+                background-color: var(--accent-color); /* Акцентный цвет для счетчика */
+                color: #fff;
+                font-size: 12px;
+                font-weight: 700;
+                padding: 3px 8px;
+                border-radius: 20px;
+                min-width: 24px;
+                text-align: center;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <!-- Навигационный бар -->
+            <div class="nav-bar">
+                <div
+                    class="nav-icon active"
+                    id="user-chats-icon"
+                    title="Чаты с пользователями"
+                >
+                    <svg
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                    >
+                        <path
+                            d="M17 21V19C17 17.9391 16.5786 16.9217 15.8284 16.1569C15.0783 15.392 14.0591 14.9391 13 14.9H9C7.94087 14.9 6.92172 15.392 6.17157 16.1569C5.42143 16.9217 5 17.9391 5 19V21"
+                            stroke="white"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                        />
+                        <path
+                            d="M12 11C14.2091 11 16 9.20914 16 7C16 4.79086 14.2091 3 12 3C9.79086 3 8 4.79086 8 7C8 9.20914 9.79086 11 12 11Z"
+                            stroke="white"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                        />
                     </svg>
-                </button>
+                </div>
+                <div
+                    class="nav-icon"
+                    id="ai-chats-icon"
+                    title="Чаты с ИИ агентом"
+                >
+                    <svg
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                    >
+                        <path
+                            d="M12 2L15.09 8.26L22 9L17 14L18.18 21.02L12 17.77L5.82 21.02L7 14L2 9L8.91 8.26L12 2Z"
+                            stroke="white"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                        />
+                    </svg>
+                </div>
             </div>
-        </div>
-        
-        <div class="messages-container" id="messages-container">
-            <div class="message-empty">Выберите чат, чтобы начать переписку</div>
-        </div>
-        <form class="composer" id="composer">
-            <input id="message-input" class="message-input" type="text" placeholder="Напишите сообщение…" autocomplete="off">
-            <button class="send-btn" type="submit">Отправить</button>
-        </form>
-    </div>
-</div>
+            <!-- Левая панель - список чатов -->
+            <div class="sidebar">
+                <header class="header">
+                    <div class="logo">Quattro</div>
+                    <button id="open-create" class="create-btn">
+                        Создать чат
+                    </button>
+                </header>
 
-<!-- Modal create chat -->
-<div id="modal-backdrop" class="modal-backdrop">
-<div class="modal" role="dialog" aria-modal="true" aria-labelledby="create-title">
-<div class="modal-title" id="create-title">Новый чат</div>
-<form id="create-form">
-            <div class="input-group">
-                <input id="chat-name" type="text" placeholder=" " autocomplete="off" required>
-                <label for="chat-name">Название чата</label>
+                <div class="search-container">
+                    <input
+                        type="text"
+                        class="search-input"
+                        placeholder="Поиск чатов..."
+                    />
+                </div>
+
+                <div class="chats-list" id="chats-list">
+                    <!-- Чаты будут добавляться сюда динамически -->
+                </div>
+
+                <section id="empty" class="empty-state" style="display: none">
+                    <h2>Пока у вас нет чатов</h2>
+                    <p>
+                        Нажмите «Создать чат», чтобы начать новый разговор. Вы
+                        сможете добавить собеседников позже.
+                    </p>
+                </section>
             </div>
-            <div class="input-group" id="user-name-group">
-                <input id="user-name" type="text" placeholder=" " autocomplete="off" required>
-                <label for="user-name">Имя пользователя</label>
+
+            <!-- Правая панель - окно чата -->
+            <div class="chat-window" id="chat-window">
+                <div class="chat-header">
+                    <div class="chat-title" id="chat-title">Выберите чат</div>
+                    <div class="chat-actions">
+                        <button
+                            id="open-settings"
+                            class="icon-btn"
+                            title="Настройки"
+                        >
+                            <!-- simple gear icon -->
+                            <svg
+                                width="20"
+                                height="20"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                xmlns="http://www.w3.org/2000/svg"
+                                aria-hidden="true"
+                            >
+                                <path
+                                    d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"
+                                    stroke="#0F172A"
+                                    stroke-width="1.5"
+                                />
+                                <path
+                                    d="M19.4 13.5a7.6 7.6 0 0 0 .05-3l2.02-1.53-2-3.46-2.44.6a7.63 7.63 0 0 0-2.6-1.5L12 1.5 9.57 4.1a7.63 7.63 0 0 0-2.6 1.5l-2.44-.6-2 3.46 2.02 1.53a7.6 7.6 0 0 0 0 3L2.53 15l2 3.46 2.44-.6c.78.62 1.66 1.12 2.6 1.5L12 22.5l2.43-2.6c.94-.38 1.82-.88 2.6-1.5l2.44.6 2-3.46-2.02-1.54Z"
+                                    stroke="#94A3B8"
+                                    stroke-width="1.2"
+                                />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="messages-container" id="messages-container">
+                    <div class="message-empty">
+                        Выберите чат, чтобы начать переписку
+                    </div>
+                </div>
+                <form class="composer" id="composer">
+                    <input
+                        id="message-input"
+                        class="message-input"
+                        type="text"
+                        placeholder="Напишите сообщение…"
+                        autocomplete="off"
+                    />
+                    <button class="send-btn" type="submit">Отправить</button>
+                </form>
             </div>
-            <div class="modal-actions">
-                <button type="button" id="cancel-create" class="btn secondary">Отмена</button>
-                <button type="submit" class="btn primary">Создать</button>
+        </div>
+
+        <!-- Modal create chat -->
+        <div id="modal-backdrop" class="modal-backdrop">
+            <div
+                class="modal"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="create-title"
+            >
+                <div class="modal-title" id="create-title">Новый чат</div>
+                <form id="create-form">
+                    <div class="input-group">
+                        <input
+                            id="chat-name"
+                            type="text"
+                            placeholder=" "
+                            autocomplete="off"
+                            required
+                        />
+                        <label for="chat-name">Название чата</label>
+                    </div>
+                    <div class="input-group" id="user-name-group">
+                        <input
+                            id="user-name"
+                            type="text"
+                            placeholder=" "
+                            autocomplete="off"
+                            required
+                        />
+                        <label for="user-name">Имя пользователя</label>
+                    </div>
+                    <div class="modal-actions">
+                        <button
+                            type="button"
+                            id="cancel-create"
+                            class="btn secondary"
+                        >
+                            Отмена
+                        </button>
+                        <button type="submit" class="btn primary">
+                            Создать
+                        </button>
+                    </div>
+                </form>
             </div>
-        </form>
-</div>
-</div>
-        
+        </div>
+
         <!-- Modal: settings -->
         <div id="settings-modal-backdrop" class="modal-backdrop">
-            <div class="modal" role="dialog" aria-modal="true" aria-labelledby="settings-title">
-                <div class="modal-title" id="settings-title">Настройки чата</div>
-                
+            <div
+                class="modal"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="settings-title"
+            >
+                <div class="modal-title" id="settings-title">
+                    Настройки чата
+                </div>
+
                 <div class="modal-actions">
                     <div class="left-actions">
-                        <button id="delete-chat" class="btn danger">Удалить чат</button>
+                        <button id="delete-chat" class="btn danger">
+                            Удалить чат
+                        </button>
                     </div>
                     <div>
-                        <button id="close-settings" class="btn primary">Готово</button>
+                        <button id="close-settings" class="btn primary">
+                            Готово
+                        </button>
                     </div>
                 </div>
             </div>
@@ -498,338 +749,380 @@
 
         <script src="crypto.js"></script>
         <script>
-    // --- Элементы DOM ---
-    const openCreateBtn = document.getElementById('open-create');
-    const modalBackdrop = document.getElementById('modal-backdrop');
-    const cancelCreateBtn = document.getElementById('cancel-create');
-    const createForm = document.getElementById('create-form');
-    const chatNameInput = document.getElementById('chat-name');
-    const userNameInput = document.getElementById('user-name');
-    const emptyState = document.getElementById('empty');
-    const chatsList = document.getElementById('chats-list');
-    const chatWindow = document.getElementById('chat-window');
-    const chatTitle = document.getElementById('chat-title');
-    const messagesContainer = document.getElementById('messages-container');
-    const messageForm = document.getElementById('composer');
-    const messageInput = document.getElementById('message-input');
-    const openSettingsBtn = document.getElementById('open-settings');
-    const settingsModalBackdrop = document.getElementById('settings-modal-backdrop');
-    const closeSettingsBtn = document.getElementById('close-settings');
-    const deleteChatBtn = document.getElementById('delete-chat');
+            // --- Элементы DOM ---
+            const openCreateBtn = document.getElementById("open-create");
+            const modalBackdrop = document.getElementById("modal-backdrop");
+            const cancelCreateBtn = document.getElementById("cancel-create");
+            const createForm = document.getElementById("create-form");
+            const chatNameInput = document.getElementById("chat-name");
+            const userNameInput = document.getElementById("user-name");
+            const emptyState = document.getElementById("empty");
+            const chatsList = document.getElementById("chats-list");
+            const chatWindow = document.getElementById("chat-window");
+            const chatTitle = document.getElementById("chat-title");
+            const messagesContainer =
+                document.getElementById("messages-container");
+            const messageForm = document.getElementById("composer");
+            const messageInput = document.getElementById("message-input");
+            const openSettingsBtn = document.getElementById("open-settings");
+            const settingsModalBackdrop = document.getElementById(
+                "settings-modal-backdrop",
+            );
+            const closeSettingsBtn = document.getElementById("close-settings");
+            const deleteChatBtn = document.getElementById("delete-chat");
 
-    // --- Управление состоянием ---
-    let currentChatUuid = null;
-    let currentChatName = null;
-    let currentWs = null;      // Хранит *текущее* WebSocket соединение
-    let currentUserId = null;  // Хранит ID *этого* пользователя
-    let lastDisplayedDate = null;
+            // --- Управление состоянием ---
+            let currentChatUuid = null;
+            let currentChatName = null;
+            let currentWs = null; // Хранит *текущее* WebSocket соединение
+            let currentUserId = null; // Хранит ID *этого* пользователя
+            let lastDisplayedDate = null;
 
-    let userPrivateKey = null;
-    let chatPublicKeys = new Map();
+            let userPrivateKey = null;
+            let chatPublicKeys = new Map();
 
-    async function initCryptoAndUser() {
-        // 1. Получаем ID пользователя
-        currentUserId = getUserIdFromToken();
-        if (!currentUserId) {
-            console.error("Критическая ошибка: ID пользователя не найден.");
-            // window.location.href = '../../autentifications/index.html';
-            return;
-        }
-        
-        // 2. Генерируем/загружаем ключи
-        const { privateKey, publicKeyPEM } = await cryptoUtils.initKeys();
-        userPrivateKey = privateKey; // Сохраняем в глобальное состояние
-        
-        // 3. Отправляем публичный ключ на сервер
-        // (Сервер должен быть готов его принять и сохранить)
-        // (Мы делаем это каждый раз - сервер может просто перезаписывать его)
-        try {
-            await fetch('/api/v1/users/public_key', { // Эндпоинт из Шага 2 (Backend)
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({ public_key: publicKeyPEM })
-            });
-            console.log("Публичный ключ отправлен на сервер.");
-        } catch (e) {
-            console.error("Ошибка отправки публичного ключа:", e);
-        }
-    }
+            async function initCryptoAndUser() {
+                // 1. Получаем ID пользователя
+                currentUserId = getUserIdFromToken();
+                if (!currentUserId) {
+                    console.error(
+                        "Критическая ошибка: ID пользователя не найден.",
+                    );
+                    // window.location.href = '../../autentifications/index.html';
+                    return;
+                }
 
-    async function loadChatPublicKeys(chatUuid) {
-        try {
-            const response = await fetch(`/api/v1/chats/public_keys/${chatUuid}`, {
-                credentials: 'include'
-            });
-            if (!response.ok) {
-                throw new Error(`Ошибка HTTP: ${response.status}`);
-            }
-            const keys = await response.json(); // Ожидаем map[int]string
-            
-            chatPublicKeys = new Map();
-            for (const userId in keys) {
-                chatPublicKeys.set(parseInt(userId, 10), keys[userId]);
-            }
-            
-            // ВАЖНО: Добавляем свой собственный ключ, чтобы шифровать для себя
-            // (для просмотра в истории)
-            const myPublicKey = localStorage.getItem("user_public_key");
-            chatPublicKeys.set(currentUserId, myPublicKey);
-            
-            console.log("Публичные ключи для чата загружены:", chatPublicKeys);
+                // 2. Генерируем/загружаем ключи
+                const { privateKey, publicKeyPEM } =
+                    await cryptoUtils.initKeys();
+                userPrivateKey = privateKey; // Сохраняем в глобальное состояние
 
-        } catch (e) {
-            console.error("Не удалось загрузить публичные ключи:", e);
-        }
-    }
-
-    // --- Вспомогательные функции ---
-
-    /**
-     * Читает cookie по имени. Мы используем это для получения JWT-токена.
-     */
-    function getCookie(name) {
-        const value = `; ${document.cookie}`;
-        const parts = value.split(`; ${name}=`);
-        if (parts.length === 2) return parts.pop().split(';').shift();
-    }
-
-    /**
-     * Форматирует дату для отображения в разделителе.
-     * @param {Date} date - Объект Date
-     * @returns {string} - Например, "8 ноября"
-     */
-    function formatDateForSeparator(date) {
-        // 'ru-RU' для получения названий месяцев на русском, как в примере
-        const options = { day: 'numeric', month: 'long' };
-        return date.toLocaleDateString('ru-RU', options);
-    }
-
-    /**
-     * Декодирует JWT-токен из cookie, чтобы получить ID текущего пользователя.
-     * Это нужно, чтобы правильно отображать 'свои' (own) сообщения.
-     */
-    function getUserIdFromToken() {
-        if (currentUserId) return currentUserId; // Возвращаем из кэша
-
-        const token = getCookie('UserToken');
-        if (!token) {
-            console.error('Не удалось найти UserToken, перенаправление на вход...');
-            // Раскомментируй это, когда аутентификация будет готова
-            // window.location.href = '../../autentifications/index.html';
-            return null;
-        }
-        try {
-            // Декодируем 'payload' (вторую часть) токена
-            const payloadBase64 = token.split('.')[1];
-            const decodedPayload = atob(payloadBase64.replace(/-/g, '+').replace(/_/g, '/'));
-            const payload = JSON.parse(decodedPayload);
-
-            // 'UserId' - это то, как мы назвали его в 'jwt.go'
-            if (!payload.UserId) {
-                console.error('UserId не найден в JWT-токене');
-                return null;
-            }
-            
-            currentUserId = payload.UserId; // Кэшируем ID
-            return currentUserId;
-        } catch (e) {
-            console.error('Ошибка декодирования JWT:', e);
-            return null;
-        }
-    }
-
-    // --- Управление WebSocket ---
-
-    /**
-     * Подключается к WebSocket для выбранного чата.
-     */
-    function connectWebSocket(chatUuid) {
-        // 1. Закрываем старое соединение, если оно есть
-        if (currentWs) {
-            console.log('Закрываем старое WS-соединение...');
-            currentWs.close();
-            currentWs = null;
-        }
-
-        const token = getCookie('UserToken');
-        if (!token) {
-            alert('Ошибка аутентификации. Пожалуйста, войдите снова.');
-            return;
-        }
-
-        // 2. Формируем URL с токеном в query (как мы и настроили в middleware)
-        const wsUrl = `ws://localhost:8080/api/v1/chats/ws/${chatUuid}?token=${token}`;
-        console.log(`Подключаемся к ${wsUrl}...`);
-        
-        currentWs = new WebSocket(wsUrl);
-
-        // 3. Настраиваем обработчики
-        currentWs.onopen = function(event) {
-            console.log('WebSocket соединение установлено');
-        };
-
-        currentWs.onmessage = async function(event) {
-            const message = JSON.parse(event.data);
-            console.log('Получено WS-сообщение:', message);
-            
-            const myUserId = getUserIdFromToken();
-
-            // Если это новое сообщение и оно для *текущего* открытого чата
-            if (message.type === 'new_message' && message.chat_id === currentChatUuid) {
-
+                // 3. Отправляем публичный ключ на сервер
+                // (Сервер должен быть готов его принять и сохранить)
+                // (Мы делаем это каждый раз - сервер может просто перезаписывать его)
                 try {
-                // message.keys - это map[user_id -> enc_key]
-                // Нам нужен ключ, зашифрованный для НАС
-                const myEncryptedKey = message.keys[currentUserId]; 
-                
-                const plainText = await cryptoUtils.decryptMessage(
-                    message.content,     // Зашифрованный контент
-                    myEncryptedKey,      // Наш зашифрованный AES-ключ
-                    userPrivateKey       // Наш приватный RSA-ключ
-                );
-                
-                // ЗАМЕНЯЕМ зашифрованный контент на расшифрованный
-                message.content = plainText; 
-
-            } catch (e) {
-                console.error("Ошибка расшифровки WS-сообщения:", e);
-                message.content = "⚠️ Не удалось расшифровать сообщение";
-            }
-                
-                // 1. Рисуем сообщение
-                appendMessageToChat(message, myUserId);
-                
-                // 2. Если сообщение НЕ от нас, отправляем "прочитано"
-                if (message.user_id !== myUserId && message.id) {
-                    console.log(`Отправляем 'read_receipt' для Message ID: ${message.id}`);
-                    currentWs.send(JSON.stringify({
-                        type: 'read_receipt',
-                        message_id: message.id, // ID сообщения, которое мы прочитали
-                        chat_id: message.chat_id,
-                        user_id: myUserId // ID того, кто прочитал
-                    }));
+                    await fetch("/api/v1/users/public_key", {
+                        // Эндпоинт из Шага 2 (Backend)
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        credentials: "include",
+                        body: JSON.stringify({ public_key: publicKeyPEM }),
+                    });
+                    console.log("Публичный ключ отправлен на сервер.");
+                } catch (e) {
+                    console.error("Ошибка отправки публичного ключа:", e);
                 }
-
-                const chatCard = document.getElementById(`chat-card-${message.chat_id}`);
-                if (chatCard) {
-                    const lastMsgElement = chatCard.querySelector('.last-message');
-                    if (lastMsgElement) {
-                        let content = message.content;
-                        if (content.length > 35) {
-                            content = content.substring(0, 35) + '...';
-                        }
-                        lastMsgElement.textContent = content;
-                    }
-                    // Убираем счетчик, т.к. чат очевидно прочитан (он открыт)
-                    const badge = chatCard.querySelector('.unread-badge');
-                    if (badge) {
-                        badge.remove();
-                    }
-                }
-            
-            // --- НОВЫЙ БЛОК ДЛЯ ОБНОВЛЕНИЯ СТАТУСА ---
-            } else if (message.type === 'status_update' && message.chat_id === currentChatUuid) {
-                // Сервер сообщает, что статус сообщения изменился
-                console.log(`Получено 'status_update' для Message ID: ${message.id}, новый статус: ${message.status}`);
-                
-                // Найти это сообщение в DOM и обновить его
-                updateMessageStatusInDOM(message.id, message.status);
             }
-            // --- КОНЕЦ НОВОГО БЛОКА ---
-        };
 
-        currentWs.onerror = function(error) {
-            console.error('Ошибка WebSocket:', error);
-        };
-
-        currentWs.onclose = function(event) {
-            console.log('WebSocket соединение закрыто');
-            // Если соединение было закрыто не по нашей воле (например, обрыв),
-            // можно добавить логику переподключения.
-            // Но если мы сами закрыли (currentWs = null), то не переподключаемся.
-        };
-    }
-
-    // --- Логика работы с чатами ---
-
-    /**
-     * Загружает список чатов (REST). Это остается как было.
-     */
-    async function loadChats() {
-        try {
-            const response = await fetch('/api/v1/chats/all_chats', {
-                credentials: 'include'
-            });
-            
-            if (response.status === 401) {
-                console.error('Ошибка 401 при загрузке чатов');
-                // Раскомментируй для редиректа
-                // window.location.href = '../../autentifications/index.html';
-                return;
-            }
-            
-            if (response.ok) {
-                const data = await response.json();
-                const chats = (data && Array.isArray(data)) ? data : (data && data.chats);
-                
-                if (!chats) {
-                    console.error('Неожиданный формат данных:', data);
-                    displayChats([]);
-                } else {
-                    await displayChats(chats);
-                }
-            } else {
-                console.error('Ошибка при загрузке чатов:', response.status);
-                displayChats([]);
-            }
-        } catch (error) {
-            console.error('Ошибка при загрузке чатов:', error);
-            displayChats([]);
-        }
-    }
-
-    /**
-     * Отображает список чатов (без изменений).
-     */
-    async function displayChats(chats) { // <-- Добавлено async
-        if (!chats || chats.length === 0) {
-            emptyState.style.display = 'flex';
-            chatsList.innerHTML = '';
-            return;
-        }
-        
-        emptyState.style.display = 'none';
-        chatsList.innerHTML = '';
-        
-        // Используем Promise.all для параллельной расшифровки
-        const chatPromises = chats.map(async (chat) => {
-            let lastMsgText = "Нет сообщений";
-            
-            // Сервер должен вернуть 'last_message' (контент) и 'last_message_key'
-            if (chat.last_message && chat.last_message_key) {
+            async function loadChatPublicKeys(chatUuid) {
                 try {
-                    lastMsgText = await cryptoUtils.decryptMessage(
-                        chat.last_message,
-                        chat.last_message_key,
-                        userPrivateKey
+                    const response = await fetch(
+                        `/api/v1/chats/public_keys/${chatUuid}`,
+                        {
+                            credentials: "include",
+                        },
+                    );
+                    if (!response.ok) {
+                        throw new Error(`Ошибка HTTP: ${response.status}`);
+                    }
+                    const keys = await response.json(); // Ожидаем map[int]string
+
+                    chatPublicKeys = new Map();
+                    for (const userId in keys) {
+                        chatPublicKeys.set(parseInt(userId, 10), keys[userId]);
+                    }
+
+                    // ВАЖНО: Добавляем свой собственный ключ, чтобы шифровать для себя
+                    // (для просмотра в истории)
+                    const myPublicKey = localStorage.getItem("user_public_key");
+                    chatPublicKeys.set(currentUserId, myPublicKey);
+
+                    console.log(
+                        "Публичные ключи для чата загружены:",
+                        chatPublicKeys,
                     );
                 } catch (e) {
-                    lastMsgText = "🔒 Зашифрованное сообщение";
+                    console.error("Не удалось загрузить публичные ключи:", e);
                 }
-            } else if (chat.last_message) {
-                lastMsgText = "🔒 Зашифрованное сообщение"; // Ключ не пришел
-            }
-            
-            if (lastMsgText.length > 35) {
-                lastMsgText = lastMsgText.substring(0, 35) + '...';
             }
 
-            const unreadBadge = chat.unread_count > 0 
-                ? `<div class="unread-badge">${chat.unread_count}</div>` 
-                : '';
-            
-            const chatCardHTML = `
+            // --- Вспомогательные функции ---
+
+            /**
+             * Читает cookie по имени. Мы используем это для получения JWT-токена.
+             */
+            function getCookie(name) {
+                const value = `; ${document.cookie}`;
+                const parts = value.split(`; ${name}=`);
+                if (parts.length === 2) return parts.pop().split(";").shift();
+            }
+
+            /**
+             * Форматирует дату для отображения в разделителе.
+             * @param {Date} date - Объект Date
+             * @returns {string} - Например, "8 ноября"
+             */
+            function formatDateForSeparator(date) {
+                // 'ru-RU' для получения названий месяцев на русском, как в примере
+                const options = { day: "numeric", month: "long" };
+                return date.toLocaleDateString("ru-RU", options);
+            }
+
+            /**
+             * Декодирует JWT-токен из cookie, чтобы получить ID текущего пользователя.
+             * Это нужно, чтобы правильно отображать 'свои' (own) сообщения.
+             */
+            function getUserIdFromToken() {
+                if (currentUserId) return currentUserId; // Возвращаем из кэша
+
+                const token = getCookie("UserToken");
+                if (!token) {
+                    console.error(
+                        "Не удалось найти UserToken, перенаправление на вход...",
+                    );
+                    // Раскомментируй это, когда аутентификация будет готова
+                    // window.location.href = '../../autentifications/index.html';
+                    return null;
+                }
+                try {
+                    // Декодируем 'payload' (вторую часть) токена
+                    const payloadBase64 = token.split(".")[1];
+                    const decodedPayload = atob(
+                        payloadBase64.replace(/-/g, "+").replace(/_/g, "/"),
+                    );
+                    const payload = JSON.parse(decodedPayload);
+
+                    // 'UserId' - это то, как мы назвали его в 'jwt.go'
+                    if (!payload.UserId) {
+                        console.error("UserId не найден в JWT-токене");
+                        return null;
+                    }
+
+                    currentUserId = payload.UserId; // Кэшируем ID
+                    return currentUserId;
+                } catch (e) {
+                    console.error("Ошибка декодирования JWT:", e);
+                    return null;
+                }
+            }
+
+            // --- Управление WebSocket ---
+
+            /**
+             * Подключается к WebSocket для выбранного чата.
+             */
+            function connectWebSocket(chatUuid) {
+                // 1. Закрываем старое соединение, если оно есть
+                if (currentWs) {
+                    console.log("Закрываем старое WS-соединение...");
+                    currentWs.close();
+                    currentWs = null;
+                }
+
+                const token = getCookie("UserToken");
+                if (!token) {
+                    alert("Ошибка аутентификации. Пожалуйста, войдите снова.");
+                    return;
+                }
+
+                // 2. Формируем URL с токеном в query (как мы и настроили в middleware)
+                const wsUrl = `ws://localhost:8080/api/v1/chats/ws/${chatUuid}?token=${token}`;
+                console.log(`Подключаемся к ${wsUrl}...`);
+
+                currentWs = new WebSocket(wsUrl);
+
+                // 3. Настраиваем обработчики
+                currentWs.onopen = function (event) {
+                    console.log("WebSocket соединение установлено");
+                };
+
+                currentWs.onmessage = async function (event) {
+                    const message = JSON.parse(event.data);
+                    console.log("Получено WS-сообщение:", message);
+
+                    const myUserId = getUserIdFromToken();
+
+                    // Если это новое сообщение и оно для *текущего* открытого чата
+                    if (
+                        message.type === "new_message" &&
+                        message.chat_id === currentChatUuid
+                    ) {
+                        try {
+                            // message.keys - это map[user_id -> enc_key]
+                            // Нам нужен ключ, зашифрованный для НАС
+                            const myEncryptedKey = message.keys[currentUserId];
+
+                            const plainText = await cryptoUtils.decryptMessage(
+                                message.content, // Зашифрованный контент
+                                myEncryptedKey, // Наш зашифрованный AES-ключ
+                                userPrivateKey, // Наш приватный RSA-ключ
+                            );
+
+                            // ЗАМЕНЯЕМ зашифрованный контент на расшифрованный
+                            message.content = plainText;
+                        } catch (e) {
+                            console.error(
+                                "Ошибка расшифровки WS-сообщения:",
+                                e,
+                            );
+                            message.content =
+                                "⚠️ Не удалось расшифровать сообщение";
+                        }
+
+                        // 1. Рисуем сообщение
+                        appendMessageToChat(message, myUserId);
+
+                        // 2. Если сообщение НЕ от нас, отправляем "прочитано"
+                        if (message.user_id !== myUserId && message.id) {
+                            console.log(
+                                `Отправляем 'read_receipt' для Message ID: ${message.id}`,
+                            );
+                            currentWs.send(
+                                JSON.stringify({
+                                    type: "read_receipt",
+                                    message_id: message.id, // ID сообщения, которое мы прочитали
+                                    chat_id: message.chat_id,
+                                    user_id: myUserId, // ID того, кто прочитал
+                                }),
+                            );
+                        }
+
+                        const chatCard = document.getElementById(
+                            `chat-card-${message.chat_id}`,
+                        );
+                        if (chatCard) {
+                            const lastMsgElement =
+                                chatCard.querySelector(".last-message");
+                            if (lastMsgElement) {
+                                let content = message.content;
+                                if (content.length > 35) {
+                                    content = content.substring(0, 35) + "...";
+                                }
+                                lastMsgElement.textContent = content;
+                            }
+                            // Убираем счетчик, т.к. чат очевидно прочитан (он открыт)
+                            const badge =
+                                chatCard.querySelector(".unread-badge");
+                            if (badge) {
+                                badge.remove();
+                            }
+                        }
+
+                        // --- НОВЫЙ БЛОК ДЛЯ ОБНОВЛЕНИЯ СТАТУСА ---
+                    } else if (
+                        message.type === "status_update" &&
+                        message.chat_id === currentChatUuid
+                    ) {
+                        // Сервер сообщает, что статус сообщения изменился
+                        console.log(
+                            `Получено 'status_update' для Message ID: ${message.id}, новый статус: ${message.status}`,
+                        );
+
+                        // Найти это сообщение в DOM и обновить его
+                        updateMessageStatusInDOM(message.id, message.status);
+                    }
+                    // --- КОНЕЦ НОВОГО БЛОКА ---
+                };
+
+                currentWs.onerror = function (error) {
+                    console.error("Ошибка WebSocket:", error);
+                };
+
+                currentWs.onclose = function (event) {
+                    console.log("WebSocket соединение закрыто");
+                    // Если соединение было закрыто не по нашей воле (например, обрыв),
+                    // можно добавить логику переподключения.
+                    // Но если мы сами закрыли (currentWs = null), то не переподключаемся.
+                };
+            }
+
+            // --- Логика работы с чатами ---
+
+            /**
+             * Загружает список чатов (REST). Это остается как было.
+             */
+            async function loadChats() {
+                try {
+                    const response = await fetch("/api/v1/chats/all_chats", {
+                        credentials: "include",
+                    });
+
+                    if (response.status === 401) {
+                        console.error("Ошибка 401 при загрузке чатов");
+                        // Раскомментируй для редиректа
+                        // window.location.href = '../../autentifications/index.html';
+                        return;
+                    }
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        const chats =
+                            data && Array.isArray(data)
+                                ? data
+                                : data && data.chats;
+
+                        if (!chats) {
+                            console.error("Неожиданный формат данных:", data);
+                            displayChats([]);
+                        } else {
+                            await displayChats(chats);
+                        }
+                    } else {
+                        console.error(
+                            "Ошибка при загрузке чатов:",
+                            response.status,
+                        );
+                        displayChats([]);
+                    }
+                } catch (error) {
+                    console.error("Ошибка при загрузке чатов:", error);
+                    displayChats([]);
+                }
+            }
+
+            /**
+             * Отображает список чатов (без изменений).
+             */
+            async function displayChats(chats) {
+                // <-- Добавлено async
+                if (!chats || chats.length === 0) {
+                    emptyState.style.display = "flex";
+                    chatsList.innerHTML = "";
+                    return;
+                }
+
+                emptyState.style.display = "none";
+                chatsList.innerHTML = "";
+
+                // Используем Promise.all для параллельной расшифровки
+                const chatPromises = chats.map(async (chat) => {
+                    let lastMsgText = "Нет сообщений";
+
+                    // Сервер должен вернуть 'last_message' (контент) и 'last_message_key'
+                    if (chat.last_message && chat.last_message_key) {
+                        try {
+                            lastMsgText = await cryptoUtils.decryptMessage(
+                                chat.last_message,
+                                chat.last_message_key,
+                                userPrivateKey,
+                            );
+                        } catch (e) {
+                            lastMsgText = "🔒 Зашифрованное сообщение";
+                        }
+                    } else if (chat.last_message) {
+                        lastMsgText = "🔒 Зашифрованное сообщение"; // Ключ не пришел
+                    }
+
+                    if (lastMsgText.length > 35) {
+                        lastMsgText = lastMsgText.substring(0, 35) + "...";
+                    }
+
+                    const unreadBadge =
+                        chat.unread_count > 0
+                            ? `<div class="unread-badge">${chat.unread_count}</div>`
+                            : "";
+
+                    const chatCardHTML = `
                 <div class="avatar">${chat.name.charAt(0).toUpperCase()}</div>
                 <div class="chat-info">
                     <div class="chat-name">${chat.name}</div>
@@ -839,462 +1132,527 @@
                     ${unreadBadge}
                 </div>
             `;
-            
-            return {
-                uuid: chat.uuid,
-                name: chat.name,
-                html: chatCardHTML
-            };
-        });
-        
-        const renderedChats = await Promise.all(chatPromises);
-        
-        // Теперь вставляем все в DOM
-        renderedChats.forEach(chatData => {
-            const chatCard = document.createElement('div');
-            chatCard.className = 'chat-card';
-            chatCard.id = `chat-card-${chatData.uuid}`;
-            chatCard.innerHTML = chatData.html;
-            
-            chatCard.addEventListener('click', () => {
-                document.querySelectorAll('.chat-card').forEach(card => {
-                    card.classList.remove('active');
+
+                    return {
+                        uuid: chat.uuid,
+                        name: chat.name,
+                        html: chatCardHTML,
+                    };
                 });
-                chatCard.classList.add('active');
-                loadChat(chatData.uuid, chatData.name);
-            });
-            
-            chatsList.appendChild(chatCard);
-        });
-    }
 
-    /**
-     * Загружает ВЫБРАННЫЙ чат.
-     * !! ИЗМЕНЕНО: Теперь эта функция также запускает WebSocket.
-     */
-    async function loadChat(chatUuid, chatName) { // <-- Добавлено async
-        currentChatUuid = chatUuid;
-        currentChatName = chatName;
-        
-        chatTitle.textContent = chatName;
-        chatWindow.classList.add('active');
-        
-        // 1. Загружаем публичные ключи (нужно для отправки)
-        await loadChatPublicKeys(chatUuid);
+                const renderedChats = await Promise.all(chatPromises);
 
-        // 2. Загружаем историю сообщений (один раз)
-        await loadMessages(chatUuid);
-        
-        // 3. Подключаемся к WebSocket
-        connectWebSocket(chatUuid);
-    }
+                // Теперь вставляем все в DOM
+                renderedChats.forEach((chatData) => {
+                    const chatCard = document.createElement("div");
+                    chatCard.className = "chat-card";
+                    chatCard.id = `chat-card-${chatData.uuid}`;
+                    chatCard.innerHTML = chatData.html;
 
-    /**
-     * Загружает историю сообщений (REST).
-     * !! ИЗМЕНЕНО: Использует ID пользователя для 'own' сообщений.
-     */
-    async function loadMessages(chatUuid) { // <-- Добавлено async
-        if (!chatUuid) {
-            messagesContainer.innerHTML = '<div class="message-empty">Не выбран чат</div>';
-            return;
-        }
-        
-        // currentUserId уже есть, getUserIdFromToken() не нужен
-        
-        try {
-            const response = await fetch(`/api/v1/chats/get_message/${chatUuid}`, {
-                credentials: 'include'
-            });
-            
-            if (response.ok) {
-                const messages = await response.json();
-                // Сервер должен прислать:
-                // [{ content, encrypted_key (для нас), user_id, ... }]
-                await displayMessages(messages, currentUserId); // <-- Добавлено await
-            } else {
-                // ... (обработка ошибок) ...
+                    chatCard.addEventListener("click", () => {
+                        document
+                            .querySelectorAll(".chat-card")
+                            .forEach((card) => {
+                                card.classList.remove("active");
+                            });
+                        chatCard.classList.add("active");
+                        loadChat(chatData.uuid, chatData.name);
+                    });
+
+                    chatsList.appendChild(chatCard);
+                });
             }
-        } catch (error) {
-            // ... (обработка ошибок) ...
-        }
-    }
 
-    /**
-     * Отображает ИСТОРИЮ сообщений.
-     * !! ИЗМЕНЕНО: Принимает userId.
-     */
-    async function displayMessages(messages, currentUserId) { // <-- Добавлено async
-        messagesContainer.innerHTML = '';
-        lastDisplayedDate = null;
-        
-        if (!messages || messages.length === 0) {
-            messagesContainer.innerHTML = '<div class="message-empty">Сообщений пока нет.</div>';
-            return;
-        }
-        
-        // Используем цикл for...of, чтобы `await` работал корректно
-        for (const message of messages) {
-            // --- БЛОК РАСШИФРОВКИ ---
-            // Сервер должен прислать `encrypted_key` для *каждого* сообщения
-            if (message.encrypted_key) {
+            /**
+             * Загружает ВЫБРАННЫЙ чат.
+             * !! ИЗМЕНЕНО: Теперь эта функция также запускает WebSocket.
+             */
+            async function loadChat(chatUuid, chatName) {
+                // <-- Добавлено async
+                currentChatUuid = chatUuid;
+                currentChatName = chatName;
+
+                chatTitle.textContent = chatName;
+                chatWindow.classList.add("active");
+
+                // 1. Загружаем публичные ключи (нужно для отправки)
+                await loadChatPublicKeys(chatUuid);
+
+                // 2. Загружаем историю сообщений (один раз)
+                await loadMessages(chatUuid);
+
+                // 3. Подключаемся к WebSocket
+                connectWebSocket(chatUuid);
+            }
+
+            /**
+             * Загружает историю сообщений (REST).
+             * !! ИЗМЕНЕНО: Использует ID пользователя для 'own' сообщений.
+             */
+            async function loadMessages(chatUuid) {
+                // <-- Добавлено async
+                if (!chatUuid) {
+                    messagesContainer.innerHTML =
+                        '<div class="message-empty">Не выбран чат</div>';
+                    return;
+                }
+
+                // currentUserId уже есть, getUserIdFromToken() не нужен
+
                 try {
-                    const plainText = await cryptoUtils.decryptMessage(
-                        message.content,
-                        message.encrypted_key,
-                        userPrivateKey
+                    const response = await fetch(
+                        `/api/v1/chats/get_message/${chatUuid}`,
+                        {
+                            credentials: "include",
+                        },
                     );
-                    message.content = plainText; // Заменяем
-                } catch (e) {
-                    console.error("Ошибка расшифровки сообщения из истории:", message.id, e);
-                    message.content = "⚠️ Не удалось расшифровать это сообщение";
+
+                    if (response.ok) {
+                        const messages = await response.json();
+                        // Сервер должен прислать:
+                        // [{ content, encrypted_key (для нас), user_id, ... }]
+                        await displayMessages(messages, currentUserId); // <-- Добавлено await
+                    } else {
+                        // ... (обработка ошибок) ...
+                    }
+                } catch (error) {
+                    // ... (обработка ошибок) ...
                 }
-            } else {
-                // Ключа нет (старое сообщение или ошибка)
-                message.content = "⚠️ Ключ для этого сообщения не найден";
             }
-            // --- КОНЕЦ БЛОКА ---
 
-            appendMessageToChat(message, currentUserId); // Рисуем расшифрованное
-        }
+            /**
+             * Отображает ИСТОРИЮ сообщений.
+             * !! ИЗМЕНЕНО: Принимает userId.
+             */
+            async function displayMessages(messages, currentUserId) {
+                // <-- Добавлено async
+                messagesContainer.innerHTML = "";
+                lastDisplayedDate = null;
 
-        // Обновляем превью чата в списке (на всякий случай)
-        if (messages.length > 0) {
-             updateChatListPreview(currentChatUuid, messages[messages.length - 1].content);
-        }
-    }
-
-    function updateChatListPreview(chatId, newText) {
-        const chatCard = document.getElementById(`chat-card-${chatId}`);
-        if (chatCard) {
-            const lastMsgElement = chatCard.querySelector('.last-message');
-            if (lastMsgElement) {
-                let content = newText;
-                if (content.length > 35) {
-                    content = content.substring(0, 35) + '...';
+                if (!messages || messages.length === 0) {
+                    messagesContainer.innerHTML =
+                        '<div class="message-empty">Сообщений пока нет.</div>';
+                    return;
                 }
-                lastMsgElement.textContent = content;
+
+                // Используем цикл for...of, чтобы `await` работал корректно
+                for (const message of messages) {
+                    // --- БЛОК РАСШИФРОВКИ ---
+                    // Сервер должен прислать `encrypted_key` для *каждого* сообщения
+                    if (message.encrypted_key) {
+                        try {
+                            const plainText = await cryptoUtils.decryptMessage(
+                                message.content,
+                                message.encrypted_key,
+                                userPrivateKey,
+                            );
+                            message.content = plainText; // Заменяем
+                        } catch (e) {
+                            console.error(
+                                "Ошибка расшифровки сообщения из истории:",
+                                message.id,
+                                e,
+                            );
+                            message.content =
+                                "⚠️ Не удалось расшифровать это сообщение";
+                        }
+                    } else {
+                        // Ключа нет (старое сообщение или ошибка)
+                        message.content =
+                            "⚠️ Ключ для этого сообщения не найден";
+                    }
+                    // --- КОНЕЦ БЛОКА ---
+
+                    appendMessageToChat(message, currentUserId); // Рисуем расшифрованное
+                }
+
+                // Обновляем превью чата в списке (на всякий случай)
+                if (messages.length > 0) {
+                    updateChatListPreview(
+                        currentChatUuid,
+                        messages[messages.length - 1].content,
+                    );
+                }
             }
-            // Убираем счетчик, т.к. чат очевидно прочитан (он открыт)
-            const badge = chatCard.querySelector('.unread-badge');
-            if (badge) {
-                badge.remove();
+
+            function updateChatListPreview(chatId, newText) {
+                const chatCard = document.getElementById(`chat-card-${chatId}`);
+                if (chatCard) {
+                    const lastMsgElement =
+                        chatCard.querySelector(".last-message");
+                    if (lastMsgElement) {
+                        let content = newText;
+                        if (content.length > 35) {
+                            content = content.substring(0, 35) + "...";
+                        }
+                        lastMsgElement.textContent = content;
+                    }
+                    // Убираем счетчик, т.к. чат очевидно прочитан (он открыт)
+                    const badge = chatCard.querySelector(".unread-badge");
+                    if (badge) {
+                        badge.remove();
+                    }
+                }
             }
-        }
-    }
 
-    /**
-     * !! НОВАЯ ФУНКЦИЯ
-     * Добавляет одно сообщение в DOM.
-     * Используется и для истории, и для новых WS-сообщений.
-     */
-    function appendMessageToChat(message, currentUserId) {
-        // Убираем "пустое" сообщение, если оно есть
-        const emptyMsg = messagesContainer.querySelector('.message-empty');
-        if (emptyMsg) {
-            emptyMsg.remove();
-        }
+            /**
+             * !! НОВАЯ ФУНКЦИЯ
+             * Добавляет одно сообщение в DOM.
+             * Используется и для истории, и для новых WS-сообщений.
+             */
+            function appendMessageToChat(message, currentUserId) {
+                // Убираем "пустое" сообщение, если оно есть
+                const emptyMsg =
+                    messagesContainer.querySelector(".message-empty");
+                if (emptyMsg) {
+                    emptyMsg.remove();
+                }
 
-        const messageDate = message.time || message.timestamp;
-        if (messageDate) {
-            const date = new Date(messageDate);
-            // Получаем строку YYYY-MM-DD для простого сравнения
-            const messageDateStr = date.toISOString().split('T')[0];
+                const messageDate = message.time || message.timestamp;
+                if (messageDate) {
+                    const date = new Date(messageDate);
+                    // Получаем строку YYYY-MM-DD для простого сравнения
+                    const messageDateStr = date.toISOString().split("T")[0];
 
-            // Сравниваем с последней сохраненной датой
-            if (messageDateStr !== lastDisplayedDate) {
-                // Если даты не совпадают, создаем и вставляем разделитель
-                const separator = document.createElement('div');
-                separator.className = 'date-separator';
-                separator.innerHTML = `<span class="date-separator-text">${formatDateForSeparator(date)}</span>`;
-                messagesContainer.appendChild(separator);
-                
-                // Обновляем трекер
-                lastDisplayedDate = messageDateStr;
-            }
-        }
+                    // Сравниваем с последней сохраненной датой
+                    if (messageDateStr !== lastDisplayedDate) {
+                        // Если даты не совпадают, создаем и вставляем разделитель
+                        const separator = document.createElement("div");
+                        separator.className = "date-separator";
+                        separator.innerHTML = `<span class="date-separator-text">${formatDateForSeparator(date)}</span>`;
+                        messagesContainer.appendChild(separator);
 
-        const messageElement = document.createElement('div');
-        messageElement.className = 'message';
-        
-        if (message.id) {
-                messageElement.dataset.messageId = message.id;
-        }
+                        // Обновляем трекер
+                        lastDisplayedDate = messageDateStr;
+                    }
+                }
 
-        // Сравниваем ID из сообщения с ID нашего пользователя
-        if (message.user_id === currentUserId) {
-            messageElement.classList.add('own');
-        }
-        
-        // Добавляем время отправки сообщения
-        const timeDiv = document.createElement('div');
-        timeDiv.className = 'message-time';
-        
-        // Получаем время из сообщения (разные поля для REST и WebSocket)
-        const messageTime = message.time || message.timestamp;
-        if (messageTime) {
-            // Преобразуем в объект Date, если это строка
-            const date = new Date(messageTime);
-            // Форматируем время в ЧЧ:ММ
-            const hours = date.getHours().toString().padStart(2, '0');
-            const minutes = date.getMinutes().toString().padStart(2, '0');
-            timeDiv.textContent = `${hours}:${minutes}`;
-        } else {
-            // Если время не указано, показываем прочерк или оставляем пустым
-            timeDiv.textContent = '--:--';
-        }
-        
-        messageElement.appendChild(timeDiv);
-        
-        // Для "own" сообщений добавляем статус
-        if (message.user_id === currentUserId) {
-            const statusDiv = document.createElement('div');
-            statusDiv.className = 'message-status';
+                const messageElement = document.createElement("div");
+                messageElement.className = "message";
 
-            // message.status будет 'sent', 'delivered' или 'read'
-            if (message.status === 'read') {
-                statusDiv.classList.add('status-read');
-            } else if (message.status === 'sent' || message.status === 'delivered') {
-                // Используем 'status-send' (одна галочка) для обоих
-                statusDiv.classList.add('status-send');
-            }
-        
-            messageElement.appendChild(statusDiv);
-        }
-        
-        // Используем textContent для безопасности
-        const content = document.createElement('div');
-        content.className = 'message-content';
-        content.textContent = message.content;
-        messageElement.appendChild(content);
-        
-        messagesContainer.appendChild(messageElement);
-        
-        // Прокручиваем к последнему сообщению
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    }
+                if (message.id) {
+                    messageElement.dataset.messageId = message.id;
+                }
 
-    function updateMessageStatusInDOM(messageId, newStatus) {
-        const messageElement = document.querySelector(`.message[data-message-id="${messageId}"]`);
-        if (!messageElement) {
-            return; // Сообщения нет в DOM (может быть, в другом чате)
-        }
+                // Сравниваем ID из сообщения с ID нашего пользователя
+                if (message.user_id === currentUserId) {
+                    messageElement.classList.add("own");
+                }
 
-        let statusDiv = messageElement.querySelector('.message-status');
-        if (!statusDiv) {
-            // Это не 'own' сообщение, нам не нужно рисовать на нем статус
-            return; 
-        }
+                // Добавляем время отправки сообщения
+                const timeDiv = document.createElement("div");
+                timeDiv.className = "message-time";
 
-        // Снимаем старые классы, ставим новый
-        statusDiv.classList.remove('status-send', 'status-read');
-
-        if (newStatus === 'read') {
-            statusDiv.classList.add('status-read');
-        } else if (newStatus === 'sent' || newStatus === 'delivered') {
-            statusDiv.classList.add('status-send');
-        }
-    }
-
-
-    // --- Обработчики событий ---
-
-    /**
-     * Отправка сообщения.
-     * !! ИЗМЕНЕНО: Теперь использует currentWs.send() вместо fetch().
-     * Добавлена поддержка отправки сообщений в чаты с ИИ.
-     */
-    messageForm.addEventListener('submit', async (e) => { // <-- Добавлено async
-        e.preventDefault();
-        
-        const plainText = messageInput.value.trim();
-        
-        if (!plainText || !currentChatUuid) {
-            console.warn('Не могу отправить сообщение...');
-            return;
-        }
-        
-        // Проверяем, является ли текущий чат чатом с ИИ
-        if (typeof currentChatUuid === 'number') {
-            // Отправка сообщения в чат с ИИ через REST API
-            await sendAIMessage(plainText);
-        } else {
-            // Отправка сообщения в обычный чат через WebSocket
-            if (!currentWs || currentWs.readyState !== WebSocket.OPEN) {
-                console.warn('WebSocket соединение не установлено');
-                return;
-            }
-            
-            // --- БЛОК ШИФРОВАНИЯ ---
-            // `chatPublicKeys` был загружен при открытии чата
-            const { content, keys } = await cryptoUtils.encryptMessage(plainText, chatPublicKeys);
-            // --- КОНЕЦ БЛОКА ---
-            
-            const message = {
-                type: 'new_message',
-                content: content,      // Зашифрованный контент (B64)
-                chat_id: currentChatUuid,
-                keys: keys             // Map[user_id -> enc_key]
-            };
-            
-            console.log("Отправка зашифрованного WS-сообщения:", message);
-            currentWs.send(JSON.stringify(message));
-        }
-        
-        messageInput.value = '';
-    });
-    
-    /**
-     * Инициализация страницы.
-     * !! ИЗМЕНЕНО: Сразу получаем ID пользователя.
-     */
-    document.addEventListener('DOMContentLoaded', async () => { // <-- Добавлено async
-        // 1. Инициализируем ключи и получаем ID пользователя
-        await initCryptoAndUser();
-        
-        // 2. Загружаем список чатов (который теперь будет расшифрован)
-        await loadChats();
-        
-        // 3. Если мы на странице чатов с ИИ, запускаем автоматическое обновление
-        if (document.getElementById('ai-chats-icon').classList.contains('active')) {
-            setupAutoRefreshAIChats();
-        }
-    });
-
-    // --- Навигация между типами чатов ---
-    document.getElementById('user-chats-icon').addEventListener('click', function() {
-        // Переключение активной иконки
-        document.getElementById('user-chats-icon').classList.add('active');
-        document.getElementById('ai-chats-icon').classList.remove('active');
-        
-        // Останавливаем автоматическое обновление чатов с ИИ
-        stopAutoRefreshAIChats();
-        
-        // Здесь будет логика загрузки чатов с пользователями
-        loadChats();
-    });
-    
-    document.getElementById('ai-chats-icon').addEventListener('click', function() {
-        // Переключение активной иконки
-        document.getElementById('ai-chats-icon').classList.add('active');
-        document.getElementById('user-chats-icon').classList.remove('active');
-        
-        // Здесь будет логика загрузки чатов с ИИ
-        loadAIChats();
-        
-        // Запускаем автоматическое обновление чатов с ИИ
-        setupAutoRefreshAIChats();
-    });
-    
-    // Загрузка чатов с ИИ
-    async function loadAIChats() {
-        try {
-            const response = await fetch('/api/v1/ai_chats/all_chats', {
-                credentials: 'include'
-            });
-            
-            if (response.status === 401) {
-                console.error('Ошибка 401 при загрузке чатов с ИИ');
-                // window.location.href = '../../autentifications/index.html';
-                return;
-            }
-            
-            if (response.ok) {
-                const chats = await response.json();
-                
-                if (!chats || chats.length === 0) {
-                    displayAIChats([]);
+                // Получаем время из сообщения (разные поля для REST и WebSocket)
+                const messageTime = message.time || message.timestamp;
+                if (messageTime) {
+                    // Преобразуем в объект Date, если это строка
+                    const date = new Date(messageTime);
+                    // Форматируем время в ЧЧ:ММ
+                    const hours = date.getHours().toString().padStart(2, "0");
+                    const minutes = date
+                        .getMinutes()
+                        .toString()
+                        .padStart(2, "0");
+                    timeDiv.textContent = `${hours}:${minutes}`;
                 } else {
-                    await displayAIChats(chats);
+                    // Если время не указано, показываем прочерк или оставляем пустым
+                    timeDiv.textContent = "--:--";
                 }
-            } else {
-                console.error('Ошибка при загрузке чатов с ИИ:', response.status);
-                displayAIChats([]);
+
+                messageElement.appendChild(timeDiv);
+
+                // Для "own" сообщений добавляем статус
+                if (message.user_id === currentUserId) {
+                    const statusDiv = document.createElement("div");
+                    statusDiv.className = "message-status";
+
+                    // message.status будет 'sent', 'delivered' или 'read'
+                    if (message.status === "read") {
+                        statusDiv.classList.add("status-read");
+                    } else if (
+                        message.status === "sent" ||
+                        message.status === "delivered"
+                    ) {
+                        // Используем 'status-send' (одна галочка) для обоих
+                        statusDiv.classList.add("status-send");
+                    }
+
+                    messageElement.appendChild(statusDiv);
+                }
+
+                // Используем textContent для безопасности
+                const content = document.createElement("div");
+                content.className = "message-content";
+                content.textContent = message.content;
+                messageElement.appendChild(content);
+
+                messagesContainer.appendChild(messageElement);
+
+                // Прокручиваем к последнему сообщению
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
             }
-        } catch (error) {
-            console.error('Ошибка при загрузке чатов с ИИ:', error);
-            displayAIChats([]);
-        }
-    }
-    
-    // Автоматическое обновление списка чатов с ИИ
-    function setupAutoRefreshAIChats() {
-        // Очищаем предыдущий интервал, если он был
-        if (window.aiChatsRefreshInterval) {
-            clearInterval(window.aiChatsRefreshInterval);
-        }
-        
-        // Устанавливаем новый интервал обновления каждые 5 секунд
-        window.aiChatsRefreshInterval = setInterval(async () => {
-            // Проверяем, что мы находимся на странице чатов с ИИ
-            if (document.getElementById('ai-chats-icon').classList.contains('active')) {
-                await loadAIChats();
-            }
-        }, 5000);
-    }
-    
-    // Останавливаем автоматическое обновление
-    function stopAutoRefreshAIChats() {
-        if (window.aiChatsRefreshInterval) {
-            clearInterval(window.aiChatsRefreshInterval);
-            window.aiChatsRefreshInterval = null;
-        }
-    }
-    
-    // Автоматическое обновление сообщений в AI чате
-    function setupAutoRefreshAIMessages() {
-        // Очищаем предыдущий интервал, если он был
-        if (window.aiMessagesRefreshInterval) {
-            clearInterval(window.aiMessagesRefreshInterval);
-        }
-        
-        // Устанавливаем новый интервал обновления каждые 2 секунды
-        window.aiMessagesRefreshInterval = setInterval(async () => {
-            // Проверяем, что у нас открыт чат с ИИ
-            if (currentChatUuid && typeof currentChatUuid === 'number') {
-                await loadAIMessages(currentChatUuid);
-            }
-        }, 2000);
-    }
-    
-    // Останавливаем автоматическое обновление сообщений
-    function stopAutoRefreshAIMessages() {
-        if (window.aiMessagesRefreshInterval) {
-            clearInterval(window.aiMessagesRefreshInterval);
-            window.aiMessagesRefreshInterval = null;
-        }
-    }
-    
-    /**
-     * Отображает список чатов с ИИ.
-     */
-    async function displayAIChats(chats) {
-        if (!chats || chats.length === 0) {
-            emptyState.style.display = 'flex';
-            chatsList.innerHTML = '';
-            // Изменяем текст для пустого состояния чатов с ИИ
-            document.querySelector('#empty h2').textContent = 'Пока у вас нет чатов с ИИ';
-            document.querySelector('#empty p').textContent = 'Нажмите «Создать чат», чтобы начать новый разговор с ИИ агентом.';
-            return;
-        }
-        
-        emptyState.style.display = 'none';
-        chatsList.innerHTML = '';
-        
-        chats.forEach(chat => {
-            let lastMsgText = "Нет сообщений";
-            
-            if (chat.last_message) {
-                lastMsgText = chat.last_message;
-                if (lastMsgText.length > 35) {
-                    lastMsgText = lastMsgText.substring(0, 35) + '...';
+
+            function updateMessageStatusInDOM(messageId, newStatus) {
+                const messageElement = document.querySelector(
+                    `.message[data-message-id="${messageId}"]`,
+                );
+                if (!messageElement) {
+                    return; // Сообщения нет в DOM (может быть, в другом чате)
+                }
+
+                let statusDiv = messageElement.querySelector(".message-status");
+                if (!statusDiv) {
+                    // Это не 'own' сообщение, нам не нужно рисовать на нем статус
+                    return;
+                }
+
+                // Снимаем старые классы, ставим новый
+                statusDiv.classList.remove("status-send", "status-read");
+
+                if (newStatus === "read") {
+                    statusDiv.classList.add("status-read");
+                } else if (newStatus === "sent" || newStatus === "delivered") {
+                    statusDiv.classList.add("status-send");
                 }
             }
-            
-            const unreadBadge = chat.unread_count > 0
-                ? `<div class="unread-badge">${chat.unread_count}</div>`
-                : '';
-            
-            const chatCardHTML = `
+
+            // --- Обработчики событий ---
+
+            /**
+             * Отправка сообщения.
+             * !! ИЗМЕНЕНО: Теперь использует currentWs.send() вместо fetch().
+             * Добавлена поддержка отправки сообщений в чаты с ИИ.
+             */
+            messageForm.addEventListener("submit", async (e) => {
+                // <-- Добавлено async
+                e.preventDefault();
+
+                const plainText = messageInput.value.trim();
+
+                if (!plainText || !currentChatUuid) {
+                    console.warn("Не могу отправить сообщение...");
+                    return;
+                }
+
+                // Проверяем, является ли текущий чат чатом с ИИ
+                if (typeof currentChatUuid === "number") {
+                    // Отправка сообщения в чат с ИИ через REST API
+                    await sendAIMessage(plainText);
+                } else {
+                    // Отправка сообщения в обычный чат через WebSocket
+                    if (!currentWs || currentWs.readyState !== WebSocket.OPEN) {
+                        console.warn("WebSocket соединение не установлено");
+                        return;
+                    }
+
+                    // --- БЛОК ШИФРОВАНИЯ ---
+                    // `chatPublicKeys` был загружен при открытии чата
+                    const { content, keys } = await cryptoUtils.encryptMessage(
+                        plainText,
+                        chatPublicKeys,
+                    );
+                    // --- КОНЕЦ БЛОКА ---
+
+                    const message = {
+                        type: "new_message",
+                        content: content, // Зашифрованный контент (B64)
+                        chat_id: currentChatUuid,
+                        keys: keys, // Map[user_id -> enc_key]
+                    };
+
+                    console.log(
+                        "Отправка зашифрованного WS-сообщения:",
+                        message,
+                    );
+                    currentWs.send(JSON.stringify(message));
+                }
+
+                messageInput.value = "";
+            });
+
+            /**
+             * Инициализация страницы.
+             * !! ИЗМЕНЕНО: Сразу получаем ID пользователя.
+             */
+            document.addEventListener("DOMContentLoaded", async () => {
+                // <-- Добавлено async
+                // 1. Инициализируем ключи и получаем ID пользователя
+                await initCryptoAndUser();
+
+                // 2. Загружаем список чатов (который теперь будет расшифрован)
+                await loadChats();
+
+                // 3. Если мы на странице чатов с ИИ, запускаем автоматическое обновление
+                if (
+                    document
+                        .getElementById("ai-chats-icon")
+                        .classList.contains("active")
+                ) {
+                    setupAutoRefreshAIChats();
+                }
+            });
+
+            // --- Навигация между типами чатов ---
+            document
+                .getElementById("user-chats-icon")
+                .addEventListener("click", function () {
+                    // Переключение активной иконки
+                    document
+                        .getElementById("user-chats-icon")
+                        .classList.add("active");
+                    document
+                        .getElementById("ai-chats-icon")
+                        .classList.remove("active");
+
+                    // Останавливаем автоматическое обновление чатов с ИИ
+                    stopAutoRefreshAIChats();
+
+                    // Здесь будет логика загрузки чатов с пользователями
+                    loadChats();
+                });
+
+            document
+                .getElementById("ai-chats-icon")
+                .addEventListener("click", function () {
+                    // Переключение активной иконки
+                    document
+                        .getElementById("ai-chats-icon")
+                        .classList.add("active");
+                    document
+                        .getElementById("user-chats-icon")
+                        .classList.remove("active");
+
+                    // Здесь будет логика загрузки чатов с ИИ
+                    loadAIChats();
+
+                    // Запускаем автоматическое обновление чатов с ИИ
+                    setupAutoRefreshAIChats();
+                });
+
+            // Загрузка чатов с ИИ
+            async function loadAIChats() {
+                try {
+                    const response = await fetch("/api/v1/ai_chats/all_chats", {
+                        credentials: "include",
+                    });
+
+                    if (response.status === 401) {
+                        console.error("Ошибка 401 при загрузке чатов с ИИ");
+                        // window.location.href = '../../autentifications/index.html';
+                        return;
+                    }
+
+                    if (response.ok) {
+                        const chats = await response.json();
+
+                        if (!chats || chats.length === 0) {
+                            displayAIChats([]);
+                        } else {
+                            await displayAIChats(chats);
+                        }
+                    } else {
+                        console.error(
+                            "Ошибка при загрузке чатов с ИИ:",
+                            response.status,
+                        );
+                        displayAIChats([]);
+                    }
+                } catch (error) {
+                    console.error("Ошибка при загрузке чатов с ИИ:", error);
+                    displayAIChats([]);
+                }
+            }
+
+            // Автоматическое обновление списка чатов с ИИ
+            function setupAutoRefreshAIChats() {
+                // Очищаем предыдущий интервал, если он был
+                if (window.aiChatsRefreshInterval) {
+                    clearInterval(window.aiChatsRefreshInterval);
+                }
+
+                // Устанавливаем новый интервал обновления каждые 5 секунд
+                window.aiChatsRefreshInterval = setInterval(async () => {
+                    // Проверяем, что мы находимся на странице чатов с ИИ
+                    if (
+                        document
+                            .getElementById("ai-chats-icon")
+                            .classList.contains("active")
+                    ) {
+                        await loadAIChats();
+                    }
+                }, 5000);
+            }
+
+            // Останавливаем автоматическое обновление
+            function stopAutoRefreshAIChats() {
+                if (window.aiChatsRefreshInterval) {
+                    clearInterval(window.aiChatsRefreshInterval);
+                    window.aiChatsRefreshInterval = null;
+                }
+            }
+
+            // Автоматическое обновление сообщений в AI чате
+            function setupAutoRefreshAIMessages() {
+                // Очищаем предыдущий интервал, если он был
+                if (window.aiMessagesRefreshInterval) {
+                    clearInterval(window.aiMessagesRefreshInterval);
+                }
+
+                // Устанавливаем новый интервал обновления каждые 2 секунды
+                window.aiMessagesRefreshInterval = setInterval(async () => {
+                    // Проверяем, что у нас открыт чат с ИИ
+                    if (
+                        currentChatUuid &&
+                        typeof currentChatUuid === "number"
+                    ) {
+                        await loadAIMessages(currentChatUuid);
+                    }
+                }, 2000);
+            }
+
+            // Останавливаем автоматическое обновление сообщений
+            function stopAutoRefreshAIMessages() {
+                if (window.aiMessagesRefreshInterval) {
+                    clearInterval(window.aiMessagesRefreshInterval);
+                    window.aiMessagesRefreshInterval = null;
+                }
+            }
+
+            /**
+             * Отображает список чатов с ИИ.
+             */
+            async function displayAIChats(chats) {
+                if (!chats || chats.length === 0) {
+                    emptyState.style.display = "flex";
+                    chatsList.innerHTML = "";
+                    // Изменяем текст для пустого состояния чатов с ИИ
+                    document.querySelector("#empty h2").textContent =
+                        "Пока у вас нет чатов с ИИ";
+                    document.querySelector("#empty p").textContent =
+                        "Нажмите «Создать чат», чтобы начать новый разговор с ИИ агентом.";
+                    return;
+                }
+
+                emptyState.style.display = "none";
+                chatsList.innerHTML = "";
+
+                chats.forEach((chat) => {
+                    let lastMsgText = "Нет сообщений";
+
+                    if (chat.last_message) {
+                        lastMsgText = chat.last_message;
+                        if (lastMsgText.length > 35) {
+                            lastMsgText = lastMsgText.substring(0, 35) + "...";
+                        }
+                    }
+
+                    const unreadBadge =
+                        chat.unread_count > 0
+                            ? `<div class="unread-badge">${chat.unread_count}</div>`
+                            : "";
+
+                    const chatCardHTML = `
                 <div class="avatar">${chat.title.charAt(0).toUpperCase()}</div>
                 <div class="chat-info">
                     <div class="chat-name">${chat.title}</div>
@@ -1303,462 +1661,552 @@
                     ${unreadBadge}
                 </div>
             `;
-            
-            const chatCard = document.createElement('div');
-            chatCard.className = 'chat-card';
-            chatCard.id = `chat-card-${chat.id}`;
-            chatCard.innerHTML = chatCardHTML;
-            
-            chatCard.addEventListener('click', () => {
-                document.querySelectorAll('.chat-card').forEach(card => {
-                    card.classList.remove('active');
-                });
-                chatCard.classList.add('active');
-                loadAIChat(chat.id, chat.title);
-            });
-            
-            chatsList.appendChild(chatCard);
-        });
-    }
-    
-    /**
-     * Загружает ВЫБРАННЫЙ чат с ИИ.
-     */
-    async function loadAIChat(chatId, chatName) {
-        currentChatUuid = chatId; // Используем ID вместо UUID для чатов с ИИ
-        currentChatName = chatName;
-        
-        chatTitle.textContent = chatName;
-        chatWindow.classList.add('active');
-        
-        // Останавливаем предыдущее автообновление сообщений
-        stopAutoRefreshAIMessages();
-        
-        // Загружаем историю сообщений
-        await loadAIMessages(chatId);
-        
-        // Запускаем автоматическое обновление сообщений
-        setupAutoRefreshAIMessages();
-    }
-    
-    /**
-     * Загружает историю сообщений чата с ИИ (REST).
-     */
-    async function loadAIMessages(chatId) {
-        if (!chatId) {
-            messagesContainer.innerHTML = '<div class="message-empty">Не выбран чат</div>';
-            return;
-        }
-        
-        try {
-            const response = await fetch(`/api/v1/ai_chats/messages/${chatId}`, {
-                credentials: 'include'
-            });
-            
-            if (response.ok) {
-                const messages = await response.json();
 
-                const docResponse = await fetch(`/api/v1/ai_chats/download_doc/${chatId}`, {
-                    method: 'GET',
-                    credentials: 'include'
-                });
+                    const chatCard = document.createElement("div");
+                    chatCard.className = "chat-card";
+                    chatCard.id = `chat-card-${chat.id}`;
+                    chatCard.innerHTML = chatCardHTML;
 
-                const hasDocument = docResponse.ok;
-            
-                if (hasDocument && messages.length > 0) {
-                    for (let i = messages.length - 1; i >= 0; i--) {
-                        if (messages[i].sender_type === "ai") {
-                            messages[i].has_document = true;
-                            break;
+                    chatCard.addEventListener("click", () => {
+                        document
+                            .querySelectorAll(".chat-card")
+                            .forEach((card) => {
+                                card.classList.remove("active");
+                            });
+                        chatCard.classList.add("active");
+                        loadAIChat(chat.id, chat.title);
+                    });
+
+                    chatsList.appendChild(chatCard);
+                });
+            }
+
+            /**
+             * Загружает ВЫБРАННЫЙ чат с ИИ.
+             */
+            async function loadAIChat(chatId, chatName) {
+                currentChatUuid = chatId; // Используем ID вместо UUID для чатов с ИИ
+                currentChatName = chatName;
+
+                chatTitle.textContent = chatName;
+                chatWindow.classList.add("active");
+
+                // Останавливаем предыдущее автообновление сообщений
+                stopAutoRefreshAIMessages();
+
+                // Загружаем историю сообщений
+                await loadAIMessages(chatId);
+
+                // Запускаем автоматическое обновление сообщений
+                setupAutoRefreshAIMessages();
+            }
+
+            /**
+             * Загружает историю сообщений чата с ИИ (REST).
+             */
+            async function loadAIMessages(chatId) {
+                if (!chatId) {
+                    messagesContainer.innerHTML =
+                        '<div class="message-empty">Не выбран чат</div>';
+                    return;
+                }
+
+                try {
+                    const response = await fetch(
+                        `/api/v1/ai_chats/messages/${chatId}`,
+                        {
+                            credentials: "include",
+                        },
+                    );
+
+                    if (response.ok) {
+                        const messages = await response.json();
+
+                        const docResponse = await fetch(
+                            `/api/v1/ai_chats/download_doc/${chatId}`,
+                            {
+                                method: "GET",
+                                credentials: "include",
+                            },
+                        );
+
+                        const hasDocument = docResponse.ok;
+
+                        if (hasDocument && messages.length > 0) {
+                            for (let i = messages.length - 1; i >= 0; i--) {
+                                if (messages[i].sender_type === "ai") {
+                                    messages[i].has_document = true;
+                                    break;
+                                }
+                            }
                         }
+
+                        await displayAIMessages(messages);
+                    } else {
+                        if (!window.aiMessagesRefreshInterval) {
+                            messagesContainer.innerHTML =
+                                '<div class="message-empty">Ошибка загрузки сообщений</div>';
+                        }
+                    }
+                } catch (error) {
+                    console.error("Ошибка при загрузке сообщений:", error);
+                    // Не показываем ошибку при автообновлении
+                    if (!window.aiMessagesRefreshInterval) {
+                        messagesContainer.innerHTML =
+                            '<div class="message-empty">Ошибка загрузки сообщений</div>';
+                    }
+                }
+            }
+
+            /**
+             * Отображает ИСТОРИЮ сообщений чата с ИИ.
+             */
+            async function displayAIMessages(messages) {
+                // Если это автообновление, просто добавляем новые сообщения
+                if (window.aiMessagesRefreshInterval) {
+                    if (!messages || messages.length === 0) return;
+
+                    // Получаем ID последнего отображенного сообщения
+                    const existingMessages =
+                        messagesContainer.querySelectorAll(".message");
+                    let lastMessageId = 0;
+                    if (existingMessages.length > 0) {
+                        const lastMessage =
+                            existingMessages[existingMessages.length - 1];
+                        lastMessageId =
+                            parseInt(lastMessage.dataset.messageId) || 0;
+                    }
+
+                    // Добавляем только новые сообщения
+                    const newMessages = messages.filter(
+                        (msg) => msg.id > lastMessageId,
+                    );
+                    newMessages.forEach((message) => {
+                        appendAIMessageToChat(message);
+                    });
+
+                    // Обновляем превью чата в списке только если есть новые сообщения
+                    if (newMessages.length > 0) {
+                        updateAIChatListPreview(
+                            currentChatUuid,
+                            newMessages[newMessages.length - 1].content,
+                        );
+                    }
+                } else {
+                    // Полная перерисовка (не автообновление)
+                    messagesContainer.innerHTML = "";
+                    lastDisplayedDate = null;
+
+                    if (!messages || messages.length === 0) {
+                        messagesContainer.innerHTML =
+                            '<div class="message-empty">Сообщений пока нет.</div>';
+                        return;
+                    }
+
+                    messages.forEach((message) => {
+                        appendAIMessageToChat(message);
+                    });
+                    // Обновляем превью чата в списке
+                    if (messages.length > 0) {
+                        updateAIChatListPreview(
+                            currentChatUuid,
+                            messages[messages.length - 1].content,
+                        );
+                    }
+                }
+            }
+
+            /**
+             * Добавляет одно сообщение чата с ИИ в DOM.
+             */
+            function appendAIMessageToChat(message) {
+                // Убираем "пустое" сообщение, если оно есть
+                const emptyMsg =
+                    messagesContainer.querySelector(".message-empty");
+                if (emptyMsg) {
+                    emptyMsg.remove();
+                }
+
+                const messageDate = message.sent_at;
+                if (messageDate) {
+                    const date = new Date(messageDate);
+                    // Получаем строку YYYY-MM-DD для простого сравнения
+                    const messageDateStr = date.toISOString().split("T")[0];
+
+                    // Сравниваем с последней сохраненной датой
+                    if (messageDateStr !== lastDisplayedDate) {
+                        // Если даты не совпадают, создаем и вставляем разделитель
+                        const separator = document.createElement("div");
+                        separator.className = "date-separator";
+                        separator.innerHTML = `<span class="date-separator-text">${formatDateForSeparator(date)}</span>`;
+                        messagesContainer.appendChild(separator);
+
+                        // Обновляем трекер
+                        lastDisplayedDate = messageDateStr;
                     }
                 }
 
-                await displayAIMessages(messages);
-            } else {
-                if (!window.aiMessagesRefreshInterval) {
-                    messagesContainer.innerHTML = '<div class="message-empty">Ошибка загрузки сообщений</div>';
+                const messageElement = document.createElement("div");
+                messageElement.className = "message";
+
+                // Добавляем ID сообщения для идентификации
+                if (message.id) {
+                    messageElement.dataset.messageId = message.id;
+                }
+
+                // Определяем, наше ли это сообщение
+                if (message.sender_type === "user") {
+                    messageElement.classList.add("own");
+                }
+
+                // Добавляем время отправки сообщения
+                const timeDiv = document.createElement("div");
+                timeDiv.className = "message-time";
+
+                // Получаем время из сообщения
+                const messageTime = message.sent_at;
+                if (messageTime) {
+                    // Преобразуем в объект Date, если это строка
+                    const date = new Date(messageTime);
+                    // Форматируем время в ЧЧ:ММ
+                    const hours = date.getHours().toString().padStart(2, "0");
+                    const minutes = date
+                        .getMinutes()
+                        .toString()
+                        .padStart(2, "0");
+                    timeDiv.textContent = `${hours}:${minutes}`;
+                } else {
+                    // Если время не указано, показываем прочерк
+                    timeDiv.textContent = "--:--";
+                }
+
+                messageElement.appendChild(timeDiv);
+
+                // Для "own" сообщений добавляем статус
+                if (message.sender_type === "user") {
+                    const statusDiv = document.createElement("div");
+                    statusDiv.className = "message-status status-read";
+                    messageElement.appendChild(statusDiv);
+                }
+                if (
+                    message.sender_type === "ai" &&
+                    message.content.includes("/api/v1/ai_chats/download_doc/")
+                ) {
+                    const contentContainer = document.createElement("div");
+                    contentContainer.className = "message-content";
+
+                    if (message.content) {
+                        const textContent = document.createElement("div");
+                        textContent.textContent = message.content;
+                        contentContainer.appendChild(textContent);
+                    }
+
+                    const downloadLink = document.createElement("a");
+                    downloadLink.href = message.content;
+                    downloadLink.textContent =
+                        "Скачать сгенерированный документ (PDF)";
+                    downloadLink.className = "download-link";
+                    downloadLink.target = "_blank";
+                    downloadLink.style.display = "inline-block";
+                    downloadLink.style.marginTop = "10px";
+                    downloadLink.style.padding = "8px 12px";
+                    downloadLink.style.backgroundColor = "#e8f5e9";
+                    downloadLink.style.border = "1px solid #c8e6c9";
+                    downloadLink.style.borderRadius = "8px";
+                    downloadLink.style.color = "#2e7d32";
+                    downloadLink.style.fontWeight = "600";
+                    downloadLink.style.textDecoration = "none";
+                    downloadLink.style.transition = "all 0.2s ease";
+
+                    downloadLink.addEventListener("mouseenter", function () {
+                        this.style.backgroundColor = "#c8e6c9";
+                        this.style.transform = "translateY(-1px)";
+                        this.style.boxShadow = "0 2px 4px rgba(0,0,0,0.1)";
+                    });
+
+                    downloadLink.addEventListener("mouseleave", function () {
+                        this.style.backgroundColor = "#e8f5e9";
+                        this.style.transform = "translateY(0)";
+                        this.style.boxShadow = "none";
+                    });
+
+                    const icon = document.createElement("span");
+                    icon.innerHTML = " 📄";
+                    downloadLink.prepend(icon);
+
+                    contentContainer.appendChild(downloadLink);
+                    messageElement.appendChild(contentContainer);
+                } else {
+                    const content = document.createElement("div");
+                    content.className = "message-content";
+                    content.textContent = message.content;
+                    messageElement.appendChild(content);
+                }
+                messagesContainer.appendChild(messageElement);
+
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }
+
+            function updateAIChatListPreview(chatId, newText) {
+                const chatCard = document.getElementById(`chat-card-${chatId}`);
+                if (chatCard) {
+                    const lastMsgElement =
+                        chatCard.querySelector(".last-message");
+                    if (lastMsgElement) {
+                        let content = newText;
+                        if (content.length > 35) {
+                            content = content.substring(0, 35) + "...";
+                        }
+                        lastMsgElement.textContent = content;
+                    }
+                    // Убираем счетчик, т.к. чат очевидно прочитан (он открыт)
+                    const badge = chatCard.querySelector(".unread-badge");
+                    if (badge) {
+                        badge.remove();
+                    }
                 }
             }
-        } catch (error) {
-            console.error('Ошибка при загрузке сообщений:', error);
-            // Не показываем ошибку при автообновлении
-            if (!window.aiMessagesRefreshInterval) {
-                messagesContainer.innerHTML = '<div class="message-empty">Ошибка загрузки сообщений</div>';
-            }
-        }
-    }
-    
-    /**
-     * Отображает ИСТОРИЮ сообщений чата с ИИ.
-     */
-    async function displayAIMessages(messages) {
-        // Если это автообновление, просто добавляем новые сообщения
-        if (window.aiMessagesRefreshInterval) {
-            if (!messages || messages.length === 0) return;
-            
-            // Получаем ID последнего отображенного сообщения
-            const existingMessages = messagesContainer.querySelectorAll('.message');
-            let lastMessageId = 0;
-            if (existingMessages.length > 0) {
-                const lastMessage = existingMessages[existingMessages.length - 1];
-                lastMessageId = parseInt(lastMessage.dataset.messageId) || 0;
-            }
-            
-            // Добавляем только новые сообщения
-            const newMessages = messages.filter(msg => msg.id > lastMessageId);
-            newMessages.forEach(message => {
-                appendAIMessageToChat(message);
-            });
-            
-            // Обновляем превью чата в списке только если есть новые сообщения
-            if (newMessages.length > 0) {
-                updateAIChatListPreview(currentChatUuid, newMessages[newMessages.length - 1].content);
-            }
-        } else {
-            // Полная перерисовка (не автообновление)
-            messagesContainer.innerHTML = '';
-            lastDisplayedDate = null;
-            
-            if (!messages || messages.length === 0) {
-                messagesContainer.innerHTML = '<div class="message-empty">Сообщений пока нет.</div>';
-                return;
-            }
-            
-            messages.forEach(message => {
-                appendAIMessageToChat(message);
-            });
-            // Обновляем превью чата в списке
-            if (messages.length > 0) {
-                updateAIChatListPreview(currentChatUuid, messages[messages.length - 1].content);
-            }
-        }
-    }
-    
-    /**
-     * Добавляет одно сообщение чата с ИИ в DOM.
-     */
-    function appendAIMessageToChat(message) {
-        // Убираем "пустое" сообщение, если оно есть
-        const emptyMsg = messagesContainer.querySelector('.message-empty');
-        if (emptyMsg) {
-            emptyMsg.remove();
-        }
 
-        const messageDate = message.sent_at;
-        if (messageDate) {
-            const date = new Date(messageDate);
-            // Получаем строку YYYY-MM-DD для простого сравнения
-            const messageDateStr = date.toISOString().split('T')[0];
+            /**
+             * Отправка сообщения в чат с ИИ.
+             */
+            async function sendAIMessage(content) {
+                try {
+                    const response = await fetch(
+                        "/api/v1/ai_chats/new_message",
+                        {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            credentials: "include",
+                            body: JSON.stringify({
+                                chat_id: currentChatUuid,
+                                content: content,
+                            }),
+                        },
+                    );
 
-            // Сравниваем с последней сохраненной датой
-            if (messageDateStr !== lastDisplayedDate) {
-                // Если даты не совпадают, создаем и вставляем разделитель
-                const separator = document.createElement('div');
-                separator.className = 'date-separator';
-                separator.innerHTML = `<span class="date-separator-text">${formatDateForSeparator(date)}</span>`;
-                messagesContainer.appendChild(separator);
-                
-                // Обновляем трекер
-                lastDisplayedDate = messageDateStr;
-            }
-        }
+                    if (response.ok) {
+                        const message = await response.json();
+                        appendAIMessageToChat(message);
 
-        const messageElement = document.createElement('div');
-        messageElement.className = 'message';
-        
-        // Добавляем ID сообщения для идентификации
-        if (message.id) {
-            messageElement.dataset.messageId = message.id;
-        }
-        
-        // Определяем, наше ли это сообщение
-        if (message.sender_type === "user") {
-            messageElement.classList.add('own');
-        }
-        
-        // Добавляем время отправки сообщения
-        const timeDiv = document.createElement('div');
-        timeDiv.className = 'message-time';
-        
-        // Получаем время из сообщения
-        const messageTime = message.sent_at;
-        if (messageTime) {
-            // Преобразуем в объект Date, если это строка
-            const date = new Date(messageTime);
-            // Форматируем время в ЧЧ:ММ
-            const hours = date.getHours().toString().padStart(2, '0');
-            const minutes = date.getMinutes().toString().padStart(2, '0');
-            timeDiv.textContent = `${hours}:${minutes}`;
-        } else {
-            // Если время не указано, показываем прочерк
-            timeDiv.textContent = '--:--';
-        }
-        
-        messageElement.appendChild(timeDiv);
-        
-        // Для "own" сообщений добавляем статус
-        if (message.sender_type === "user") {
-            const statusDiv = document.createElement('div');
-            statusDiv.className = 'message-status status-read';
-            messageElement.appendChild(statusDiv);
-        }
-        if (message.sender_type === "ai" && message.has_document) {
-            const contentContainer = document.createElement('div');
-            contentContainer.className = 'message-content';
-
-            if (message.content) {
-                const textContent = document.createElement('div');
-                textContent.textContent = message.content;
-                contentContainer.appendChild(textContent);
-            }     
-
-            const downloadLink = document.createElement('a');
-            downloadLink.href = `/api/v1/ai_chats/download_doc/${currentChatUuid}`;
-            downloadLink.textContent = 'Скачать сгенерированный документ (PDF)';
-            downloadLink.className = 'download-link';
-            downloadLink.target = '_blank';
-            downloadLink.style.display = 'inline-block';
-            downloadLink.style.marginTop = '10px';
-            downloadLink.style.padding = '8px 12px';
-            downloadLink.style.backgroundColor = '#e8f5e9';
-            downloadLink.style.border = '1px solid #c8e6c9';
-            downloadLink.style.borderRadius = '8px';
-            downloadLink.style.color = '#2e7d32';
-            downloadLink.style.fontWeight = '600';
-            downloadLink.style.textDecoration = 'none';
-            downloadLink.style.transition = 'all 0.2s ease';
-
-            downloadLink.addEventListener('mouseenter', function() {
-                this.style.backgroundColor = '#c8e6c9';
-                this.style.transform = 'translateY(-1px)';
-                this.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
-            });
-
-            downloadLink.addEventListener('mouseleave', function() {
-                this.style.backgroundColor = '#e8f5e9';
-                this.style.transform = 'translateY(0)';
-                this.style.boxShadow = 'none';
-            });
-        
-            const icon = document.createElement('span');
-            icon.innerHTML = ' 📄';
-            downloadLink.prepend(icon);
-            
-            contentContainer.appendChild(downloadLink);
-            messageElement.appendChild(contentContainer);
-        } else {
-            const content = document.createElement('div');
-            content.className = 'message-content';
-            content.textContent = message.content;
-            messageElement.appendChild(content);
-        }
-        messagesContainer.appendChild(messageElement);
-        
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    }
-    
-    function updateAIChatListPreview(chatId, newText) {
-        const chatCard = document.getElementById(`chat-card-${chatId}`);
-        if (chatCard) {
-            const lastMsgElement = chatCard.querySelector('.last-message');
-            if (lastMsgElement) {
-                let content = newText;
-                if (content.length > 35) {
-                    content = content.substring(0, 35) + '...';
+                        // Обновляем превью чата в списке
+                        updateAIChatListPreview(currentChatUuid, content);
+                    } else {
+                        console.error(
+                            "Ошибка при отправке сообщения:",
+                            response.status,
+                        );
+                    }
+                } catch (error) {
+                    console.error("Ошибка при отправке сообщения:", error);
                 }
-                lastMsgElement.textContent = content;
             }
-            // Убираем счетчик, т.к. чат очевидно прочитан (он открыт)
-            const badge = chatCard.querySelector('.unread-badge');
-            if (badge) {
-                badge.remove();
-            }
-        }
-    }
-    
-    /**
-     * Отправка сообщения в чат с ИИ.
-     */
-    async function sendAIMessage(content) {
-        try {
-            const response = await fetch('/api/v1/ai_chats/new_message', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({
-                    chat_id: currentChatUuid,
-                    content: content
-                })
+
+            // --- Модальные окна (без изменений) ---
+
+            // Остановка автоматического обновления при закрытии страницы
+            window.addEventListener("beforeunload", () => {
+                stopAutoRefreshAIChats();
             });
+
+            // Создание чата
+           // --- Исправленный обработчик открытия модального окна ---
+            openCreateBtn.addEventListener("click", () => {
+                // Проверяем, какой тип чата мы создаем
+                const isAIChat = document
+                    .getElementById("ai-chats-icon")
+                    .classList.contains("active");
+
+                const userNameInput = document.getElementById("user-name"); // Получаем ссылку на инпут
+                const userNameGroup = document.getElementById("user-name-group");
+
+                if (isAIChat) {
+                    // Для чатов с ИИ:
+                    // 1. Скрываем поле
+                    userNameGroup.style.display = "none";
+                    // 2. ВАЖНО: Убираем атрибут required, чтобы форма могла отправиться без него
+                    userNameInput.removeAttribute("required");
+                    
+                    document.getElementById("create-title").textContent = "Новый чат с ИИ";
+                } else {
+                    // Для обычных чатов:
+                    // 1. Показываем поле
+                    userNameGroup.style.display = "block";
+                    // 2. Возвращаем атрибут required
+                    userNameInput.setAttribute("required", "");
+                    
+                    document.getElementById("create-title").textContent = "Новый чат";
+                }
+
+                modalBackdrop.classList.add("open");
+                chatNameInput.focus();
+            });
+
+            function closeCreateModal() {
+                            modalBackdrop.classList.remove("open");
+                            createForm.reset();
+                            // Убедимся, что поля ввода очищены
+                            chatNameInput.value = "";
+                            userNameInput.value = "";
+                        }
+
+            cancelCreateBtn.addEventListener("click", closeCreateModal);
+            modalBackdrop.addEventListener("click", (e) => {
+                if (e.target === modalBackdrop) closeCreateModal();
+            });
+
+            createForm.addEventListener("submit", async (e) => {
+                            e.preventDefault();
+                            const chatName = chatNameInput.value.trim();
             
-            if (response.ok) {
-                const message = await response.json();
-                appendAIMessageToChat(message);
-                
-                // Обновляем превью чата в списке
-                updateAIChatListPreview(currentChatUuid, content);
-            } else {
-                console.error('Ошибка при отправке сообщения:', response.status);
-            }
-        } catch (error) {
-            console.error('Ошибка при отправке сообщения:', error);
-        }
-    }
-    
-    // --- Модальные окна (без изменений) ---
-    
-    // Остановка автоматического обновления при закрытии страницы
-    window.addEventListener('beforeunload', () => {
-        stopAutoRefreshAIChats();
-    });
-    
-    // Создание чата
-    openCreateBtn.addEventListener('click', () => {
-        // Проверяем, какой тип чата мы создаем
-        const isAIChat = document.getElementById('ai-chats-icon').classList.contains('active');
-        
-        if (isAIChat) {
-            // Для чатов с ИИ показываем только поле названия
-            document.getElementById('user-name-group').style.display = 'none';
-            document.getElementById('create-title').textContent = 'Новый чат с ИИ';
-        } else {
-            // Для обычных чатов показываем оба поля
-            document.getElementById('user-name-group').style.display = 'block';
-            document.getElementById('create-title').textContent = 'Новый чат';
-        }
-        
-        modalBackdrop.classList.add('open');
-        chatNameInput.focus();
-    });
-
-    function closeCreateModal() {
-        modalBackdrop.classList.remove('open');
-        createForm.reset();
-    }
-
-    cancelCreateBtn.addEventListener('click', closeCreateModal);
-    modalBackdrop.addEventListener('click', (e) => {
-        if (e.target === modalBackdrop) closeCreateModal();
-    });
-
-    createForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const chatName = chatNameInput.value.trim();
-        
-        // Проверяем, какой тип чата мы создаем
-        const isAIChat = document.getElementById('ai-chats-icon').classList.contains('active');
-        
-        if (isAIChat) {
-            // Создание чата с ИИ
-            if (!chatName) return;
+                            // Проверяем, какой тип чата мы создаем
+                            const isAIChat = document
+                                .getElementById("ai-chats-icon")
+                                .classList.contains("active");
             
-            try {
-                const response = await fetch('/api/v1/ai_chats/new_chat', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include',
-                    body: JSON.stringify({ title: chatName })
-                });
-                
-                if (response.status === 401) {
-                    window.location.href = '../../autentifications/index.html';
+                            if (isAIChat) {
+                                // Создание чата с ИИ
+                                if (!chatName) return;
+            
+                                try {
+                                    const response = await fetch(
+                                        "/api/v1/ai_chats/new_chat",
+                                        {
+                                            method: "POST",
+                                            headers: { "Content-Type": "application/json" },
+                                            credentials: "include",
+                                            body: JSON.stringify({ title: chatName }),
+                                        },
+                                    );
+            
+                                    if (response.status === 401) {
+                                        window.location.href =
+                                            "../../autentifications/index.html";
+                                        return;
+                                    }
+            
+                                    if (response.ok) {
+                                        closeCreateModal();
+                                        await loadAIChats(); // Обновляем список чатов с ИИ
+                                    } else {
+                                        console.error(
+                                            "Ошибка при создании чата с ИИ:",
+                                            response.status,
+                                        );
+                                        // Добавляем сообщение об ошибке пользователю
+                                        alert("Ошибка при создании чата с ИИ");
+                                    }
+                                } catch (error) {
+                                    console.error("Ошибка при создании чата с ИИ:", error);
+                                    alert("Ошибка при создании чата с ИИ: " + error.message);
+                                }
+                            } else {
+                                // Создание обычного чата
+                                const userName = userNameInput.value.trim();
+                                if (!chatName || !userName) return;
+            
+                                try {
+                                    const response = await fetch("/api/v1/chats/new_chat", {
+                                        method: "POST",
+                                        headers: { "Content-Type": "application/json" },
+                                        credentials: "include",
+                                        body: JSON.stringify({
+                                            chat_name: chatName,
+                                            user_name: userName,
+                                        }),
+                                    });
+            
+                                    if (response.status === 401) {
+                                        window.location.href =
+                                            "../../autentifications/index.html";
+                                        return;
+                                    }
+            
+                                    if (response.ok) {
+                                        closeCreateModal();
+                                        await loadChats(); // Обновляем список чатов
+                                    } else {
+                                        console.error(
+                                            "Ошибка при создании чата:",
+                                            response.status,
+                                        );
+                                        // Добавляем сообщение об ошибке пользователю
+                                        alert("Ошибка при создании чата");
+                                    }
+                                } catch (error) {
+                                    console.error("Ошибка при создании чата:", error);
+                                    alert("Ошибка при создании чата: " + error.message);
+                                }
+                            }
+                        });
+
+            // Настройки чата
+            openSettingsBtn.addEventListener("click", () => {
+                if (!currentChatUuid) {
+                    alert("Сначала выберите чат");
                     return;
                 }
-                
-                if (response.ok) {
-                    closeCreateModal();
-                    await loadAIChats(); // Обновляем список чатов с ИИ
-                } else {
-                    console.error('Ошибка при создании чата с ИИ:', response.status);
-                }
-            } catch (error) {
-                console.error('Ошибка при создании чата с ИИ:', error);
+                settingsModalBackdrop.style.display = "flex";
+                const modal = settingsModalBackdrop.querySelector(".modal");
+                setTimeout(() => modal.classList.add("open"), 10);
+            });
+
+            function closeSettingsModal() {
+                const modal = settingsModalBackdrop.querySelector(".modal");
+                modal.classList.remove("open");
+                setTimeout(
+                    () => (settingsModalBackdrop.style.display = "none"),
+                    250,
+                );
             }
-        } else {
-            // Создание обычного чата
-            const userName = userNameInput.value.trim();
-            if (!chatName || !userName) return;
-            
-            try {
-                const response = await fetch('/api/v1/chats/new_chat', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include',
-                    body: JSON.stringify({ chat_name: chatName, user_name: userName })
-                });
-                
-                if (response.status === 401) {
-                    window.location.href = '../../autentifications/index.html';
+
+            closeSettingsBtn.addEventListener("click", closeSettingsModal);
+            settingsModalBackdrop.addEventListener("click", (e) => {
+                if (e.target === settingsModalBackdrop) closeSettingsModal();
+            });
+
+            // Удаление чата
+            deleteChatBtn.addEventListener("click", async () => {
+                if (!currentChatUuid) return;
+                if (
+                    !confirm(
+                        "Вы уверены, что хотите удалить этот чат? Это действие нельзя отменить.",
+                    )
+                ) {
                     return;
                 }
-                
-                if (response.ok) {
-                    closeCreateModal();
-                    await loadChats(); // Обновляем список чатов
-                } else {
-                    console.error('Ошибка при создании чата:', response.status);
+
+                try {
+                    const response = await fetch(
+                        `/api/v1/chats/delete_chat/${currentChatUuid}`,
+                        {
+                            method: "DELETE",
+                            credentials: "include",
+                        },
+                    );
+
+                    if (response.ok) {
+                        closeSettingsModal();
+                        chatWindow.classList.remove("active");
+                        currentChatUuid = null;
+                        if (currentWs) {
+                            // Закрываем WS-соединение удаленного чата
+                            currentWs.close();
+                            currentWs = null;
+                        }
+                        await loadChats(); // Обновляем список
+                    } else {
+                        console.error(
+                            "Ошибка при удалении чата:",
+                            response.status,
+                        );
+                        alert("Ошибка при удалении чата");
+                    }
+                } catch (error) {
+                    console.error("Ошибка при удалении чата:", error);
+                    alert("Ошибка при удалении чата");
                 }
-            } catch (error) {
-                console.error('Ошибка при создании чата:', error);
-            }
-        }
-    });
-
-    // Настройки чата
-    openSettingsBtn.addEventListener('click', () => {
-        if (!currentChatUuid) {
-            alert('Сначала выберите чат');
-            return;
-        }
-        settingsModalBackdrop.style.display = 'flex';
-        const modal = settingsModalBackdrop.querySelector('.modal');
-        setTimeout(() => modal.classList.add('open'), 10);
-    });
-
-    function closeSettingsModal() {
-        const modal = settingsModalBackdrop.querySelector('.modal');
-        modal.classList.remove('open');
-        setTimeout(() => settingsModalBackdrop.style.display = 'none', 250);
-    }
-
-    closeSettingsBtn.addEventListener('click', closeSettingsModal);
-    settingsModalBackdrop.addEventListener('click', (e) => {
-        if (e.target === settingsModalBackdrop) closeSettingsModal();
-    });
-
-    // Удаление чата
-    deleteChatBtn.addEventListener('click', async () => {
-        if (!currentChatUuid) return;
-        if (!confirm('Вы уверены, что хотите удалить этот чат? Это действие нельзя отменить.')) {
-            return;
-        }
-        
-        try {
-            const response = await fetch(`/api/v1/chats/delete_chat/${currentChatUuid}`, {
-                method: 'DELETE',
-                credentials: 'include'
             });
-            
-            if (response.ok) {
-                closeSettingsModal();
-                chatWindow.classList.remove('active');
-                currentChatUuid = null;
-                if (currentWs) { // Закрываем WS-соединение удаленного чата
-                    currentWs.close();
-                    currentWs = null;
-                }
-                await loadChats(); // Обновляем список
-            } else {
-                console.error('Ошибка при удалении чата:', response.status);
-                alert('Ошибка при удалении чата');
-            }
-        } catch (error) {
-            console.error('Ошибка при удалении чата:', error);
-            alert('Ошибка при удалении чата');
-        }
-    });
-</script>
-
-</body>
+        </script>
+    </body>
 </html>

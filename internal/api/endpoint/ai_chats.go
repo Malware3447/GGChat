@@ -148,7 +148,7 @@ func (a *AIApiChats) NewMessage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Генерация ответа от AI
-	go a.GenerateAIResponse(body.ChatID, body.Content)
+	go a.GenerateAIResponse(body.ChatID)
 
 	w.Header().Set("Content-Type", "application-json")
 	w.WriteHeader(http.StatusOK)
@@ -181,7 +181,7 @@ func (a *AIApiChats) GetMessages(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (a *AIApiChats) GenerateAIResponse(chatID int, userMessage string) {
+func (a *AIApiChats) GenerateAIResponse(chatID int) {
 	messages, err := a.repo.GetMessageInChat(context.Background(), chatID, 100, nil)
 	if err != nil {
 		logrus.Warn("ошибка получения истории сообщений для контекста: ", err)
@@ -203,7 +203,7 @@ func (a *AIApiChats) GenerateAIResponse(chatID int, userMessage string) {
 		})
 	}
 
-	aiResponse, docName, match, err := GenerateAIResponse(userMessage, history)
+	aiResponse, docName, match, err := GenerateAIResponse(history)
 	if err != nil {
 		logrus.Warn("Ошибка генерации AI ответа: ", err)
 		aiResponse = "Извините, произошла ошибка при обработке запроса."
@@ -215,16 +215,12 @@ func (a *AIApiChats) GenerateAIResponse(chatID int, userMessage string) {
 			return
 		}
 
-		path, err := a.gm.ConPDF(doneDocUrl)
+		_, err = a.gm.ConPDF(doneDocUrl)
 		if err != nil {
-			return
-		}
-		err = a.repo.AddPathDoc(context.Background(), chatID, path, match)
-		if err != nil {
-			logrus.Warn("ошибка добавления пути к документу: ", err)
 			return
 		}
 
+		_, err = a.repo.CreateMessage(context.Background(), chatID, "ai", "/api/v1/ai_chats/download_doc/"+docName)
 	}
 
 	_, err = a.repo.CreateMessage(context.Background(), chatID, "ai", aiResponse)
@@ -237,16 +233,17 @@ func (a *AIApiChats) GenerateAIResponse(chatID int, userMessage string) {
 }
 
 var documentFields map[string]string = map[string]string{
-	"Иск": "1",
+	"Иск":       "1",
+	"Претензия": "2",
 }
 
-func GenerateAIResponse(userMessage string, history []Message) (string, string, string, error) {
+func GenerateAIResponse(history []Message) (string, string, string, error) {
 	var documents []string
 	for doc := range documentFields {
 		documents = append(documents, doc)
 	}
 
-	docNum, err := matchDocument(userMessage, documents)
+	docNum, err := matchDocument(history, documents)
 	if err != nil {
 		logrus.Warn("Match document error:", err)
 	}
@@ -258,7 +255,7 @@ func GenerateAIResponse(userMessage string, history []Message) (string, string, 
 
 	provider := getProvider()
 
-	cont := fmt.Sprintf("You are collecting information for the following fields: %s. Think step by step before asking questions. Ask the user questions to fill in the missing information. Do not guess or assume values. When all fields are collected, respond ONLY with a JSON object containing the fields. Do not add any other text.", docTags)
+	cont := fmt.Sprintf("You are collecting information for the following fields: %s. Think through everything step by step before asking questions. Ask the user some related questions to fill in the missing information. No more than 4 questions at a time. If you consider some user formulations unsuitable for a legal document, then when forming JSON, change them to more suitable ones from a legal point of view. When asking the user questions, do not send them fields in JSON format. DON'T GUESS and DON't ASSUME the meaning. Answer briefly and concisely. When all the fields are collected, respond ONLY using the JSON object containing the fields. Do not add any other text. If any field remains empty, fill it in as \"нет\".", docTags)
 	logrus.Info(cont)
 
 	systemPrompt := Message{
@@ -346,31 +343,50 @@ func GenerateAIResponse(userMessage string, history []Message) (string, string, 
 }
 
 func (a *AIApiChats) DownloadDocument(w http.ResponseWriter, r *http.Request) {
-	chatIDStr := chi.URLParam(r, "chat_id")
-	chatID, err := strconv.Atoi(chatIDStr)
-	if err != nil {
-		logrus.Warn("Ошибка конвертации ID чата: ", err)
-		http.Error(w, "Неверный ID чата", http.StatusBadRequest)
-		return
-	}
+	docID := chi.URLParam(r, "doc")
 
-	path, name, err := a.repo.GetPathDoc(r.Context(), chatID)
-	if err != nil {
-		logrus.Errorf("Ошибка получения пути документа для ChatID %d: %v", chatID, err)
-		http.Error(w, "Документ не найден или недоступен", http.StatusNotFound)
-		return
-	}
+	// Используем filepath.Join для кроссплатформенной совместимости
+	basePath := "C:/Users/salam/QuattroProject/containers/temporary_storage"
+	fullPath := filepath.Join(basePath, "done_"+docID+".pdf")
 
-	fullPath := filepath.Join(path, name)
-
+	// Проверяем существует ли файл
 	if _, err := os.Stat(fullPath); os.IsNotExist(err) {
 		logrus.Errorf("Файл не найден на диске по пути: %s", fullPath)
 		http.Error(w, "Файл не найден на сервере", http.StatusNotFound)
 		return
+	} else if err != nil {
+		logrus.Errorf("Ошибка при проверке файла: %v", err)
+		http.Error(w, "Внутренняя ошибка сервера", http.StatusInternalServerError)
+		return
 	}
 
-	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", name))
+	// Проверяем можно ли прочитать файл
+	file, err := os.Open(fullPath)
+	if err != nil {
+		logrus.Errorf("Ошибка открытия файла: %v", err)
+		http.Error(w, "Невозможно открыть файл", http.StatusInternalServerError)
+		return
+	}
+	defer file.Close()
+
+	// Получаем информацию о файле
+	fileInfo, err := file.Stat()
+	if err != nil {
+		logrus.Errorf("Ошибка получения информации о файле: %v", err)
+		http.Error(w, "Ошибка получения информации о файле", http.StatusInternalServerError)
+		return
+	}
+
+	// Проверяем что файл не пустой
+	if fileInfo.Size() == 0 {
+		logrus.Warnf("Файл пустой: %s", fullPath)
+		http.Error(w, "Файл пустой", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", docID+".pdf"))
 	w.Header().Set("Content-Type", "application/pdf")
+	w.Header().Set("Content-Length", fmt.Sprintf("%d", fileInfo.Size()))
 
 	http.ServeFile(w, r, fullPath)
 }

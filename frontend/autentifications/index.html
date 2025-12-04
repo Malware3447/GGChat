@@ -9,13 +9,15 @@
     <style>
         /* CSS-Переменные (Тема Qattro) */
         :root {
-            --primary-color: #1E453E; /* Темно-зеленый */
-            --primary-hover: #15322C; /* Темнее зеленый */
-            --background-light: #F7F7F7; /* Очень светлый фон */
-            --text-dark: #1E293B;
-            --shadow-light: 0 10px 30px rgba(0, 0, 0, 0.08);
+            --primary-color: #1A2436; /* Темно-синий */
+            --primary-hover: #2A3A56; /* Более светлый оттенок */
+            --background-light: #FFFFFF; /* Белый фон */
+            --text-dark: #1A2436; /* Темно-синий для текста */
+            --shadow-light: 0 10px 30px rgba(26, 36, 54, 0.15);
             --border-radius-large: 16px;
             --transition-speed: 0.3s;
+            --accent-color: #3A5670; /* Синий акцент */
+            --accent-hover: #507090; /* Светлый синий акцент */
         }
 
         /* Базовые стили */
@@ -53,7 +55,7 @@
         .logo-icon {
             width: 50px;
             height: 50px;
-            background: var(--primary-color);
+            background: var(--accent-color); /* Акцентный цвет для логотипа */
             color: white;
             border-radius: 12px;
             display: grid;
@@ -95,7 +97,7 @@
         .tab-btn.active {
             background: #FFFFFF;
             color: var(--text-dark);
-            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            box-shadow: 0 4px 10px rgba(26, 36, 54, 0.1); /* Тень с новым цветом */
         }
 
         /* Карточки форм */
@@ -135,26 +137,26 @@
             font-size: 16px; 
             transition: border-color 0.3s;
         }
-        .input-group input:focus { 
-            outline: none; 
-            border-color: var(--primary-color); 
+        .input-group input:focus {
+            outline: none;
+            border-color: var(--accent-color); /* Акцентный цвет для фокуса */
         }
 
         /* Кнопка */
-        .cta-button { 
-            width: 100%; 
-            background-color: var(--primary-color); 
-            color: white; 
-            border: none; 
-            padding: 15px 25px; 
-            border-radius: 10px; 
-            font-weight: 600; 
-            cursor: pointer; 
-            font-size: 18px; 
-            transition: background-color 0.3s, transform 0.2s, opacity 0.3s; 
-            margin-top: 10px; 
+        .cta-button {
+            width: 100%;
+            background-color: var(--accent-color); /* Акцентный цвет для кнопки */
+            color: white;
+            border: none;
+            padding: 15px 25px;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 18px;
+            transition: background-color 0.3s, transform 0.2s, opacity 0.3s;
+            margin-top: 10px;
         }
-        .cta-button:hover:not(:disabled) { background-color: var(--primary-hover); transform: translateY(-1px); }
+        .cta-button:hover:not(:disabled) { background-color: var(--accent-hover); transform: translateY(-1px); }
         .cta-button:disabled { cursor: not-allowed; opacity: 0.7; }
 
     </style>

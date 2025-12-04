@@ -110,7 +110,7 @@ func (a *Api) Init() {
 		router.Post("/new_message", a.apiAIChat.NewMessage)
 		router.Delete("/delete_chat/{id}", a.apiAIChat.DeleteChatAI)
 		router.Get("/messages/{chat_id}", a.apiAIChat.GetMessages)
-		router.Get("/download_doc/{chat_id}", a.apiAIChat.DownloadDocument)
+		router.Get("/download_doc/{doc}", a.apiAIChat.DownloadDocument)
 	})
 }
 

@@ -86,7 +86,7 @@ func (p OpenRouterProvider) ParseStreamResponse(line string) (string, bool, erro
 
 func getProvider() Provider {
 	const apiKey = ""
-	const model = "x-ai/grok-4.1-fast:free"
+	const model = "x-ai/grok-code-fast-1"
 	return OpenRouterProvider{APIKey: apiKey, Model: model}
 }
 
@@ -163,7 +163,7 @@ func generateDocumentFields(documents []string) ([]DocumentFields, error) {
 	var results []DocumentFields
 
 	for _, doc := range documents {
-		prompt := fmt.Sprintf(`For the document type "%s", generate a list of 2-4 essential fields that would need to be filled out to complete this document. 
+		prompt := fmt.Sprintf(`For the document type "%s", generate a list of 2-4 essential fields that would need to be filled out to complete this document.
 
 Respond with ONLY a JSON array of field names, like: ["field1", "field2", "field3"]
 
@@ -250,7 +250,12 @@ Do not include any other text or explanation.`, doc)
 	return results, nil
 }
 
-func matchDocument(userMessage string, documents []string) (int, error) {
+var docNumbers map[int]string = map[int]string{
+	1: "claim",
+	2: "pretenzia_template",
+}
+
+func matchDocument(history []Message, documents []string) (int, error) {
 	if len(documents) == 0 {
 		return 0, fmt.Errorf("no documents provided")
 	}
@@ -263,14 +268,14 @@ func matchDocument(userMessage string, documents []string) (int, error) {
 		docList.WriteString(fmt.Sprintf("%d. %s\n", i+1, doc))
 	}
 
-	prompt := fmt.Sprintf(`You are a document matching system. Given a user message and a list of documents, identify which document best matches the user's intent.
+	prompt := fmt.Sprintf(`You are a document matching system. Given a user history chat and a list of documents, identify which document best matches the user's intent.
 
 User message: %s
 
 Documents:
 %s
 
-Respond with ONLY the number (1-%d) of the best matching document. Do not include any other text or explanation.`, userMessage, docList.String(), len(documents))
+Respond with ONLY the number (1-%d) of the best matching document. Do not include any other text or explanation.`, history, docList.String(), len(documents))
 
 	conversation := []Message{
 		{Role: "system", Content: "You are a precise document matching assistant. Always respond with only a single number. You must think about it before responding to request."},
@@ -373,10 +378,6 @@ Respond with ONLY the number (1-%d) of the best matching document. Do not includ
 	}
 
 	return docNum, nil
-}
-
-var docNumbers map[int]string = map[int]string{
-	1: "claim",
 }
 
 var urlTemplateStorage = "C:\\Users\\salam\\quattroProject\\containers\\"
